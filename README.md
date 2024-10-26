@@ -39,8 +39,8 @@ images/
 Contains images used in the information panel for each celestial body.
 package.json
 Lists all the dependencies and scripts needed to run the application.
-How to Run the Project
-Install Dependencies
+# How to Run the Project
+## Install Dependencies
 
 bash
 Copy code
