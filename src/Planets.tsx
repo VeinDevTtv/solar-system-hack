@@ -122,6 +122,17 @@ const Planets: React.FC = () => {
     <>
       {planetData.map((planet, index) => (
         <group key={planet.name}>
+          {planet.name === 'Saturn' && (
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[planet.size + 0.5, planet.size + 1, 32]} />
+            <meshStandardMaterial
+              color="grey"
+              side={2} // DoubleSide
+              transparent={true}
+              opacity={0.7}
+            />
+          </mesh>
+          )}
           {planet.name !== 'Sun' && <Orbit radius={planet.orbitRadius} />}
           <mesh
             ref={(el) => (meshRefs.current[index] = el!)}
