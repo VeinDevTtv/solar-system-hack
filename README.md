@@ -6,7 +6,7 @@
 ## Overview
 This project is a 3D visualization of the solar system built using React, Three.js, and related technologies. It allows users to explore the solar system, view planets and their moons, and get detailed information about each celestial body. Users can also calculate distances between planets and the Sun or other planets.
 
-Languages and Technologies Used
+## Languages and Technologies Used
 TypeScript
 React
 Three.js
