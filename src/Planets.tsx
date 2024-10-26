@@ -16,6 +16,7 @@ interface MoonData {
   orbitRadius: number;
   orbitSpeed: number;
   realOrbitRadius?: number; // in million km
+  parentIndex?: number;
 }
 
 interface PlanetData {
@@ -29,7 +30,8 @@ interface PlanetData {
   moons?: MoonData[];
 }
 
-const planetData: PlanetData[] = [
+// Exporting planetData
+export const planetData: PlanetData[] = [
   {
     name: 'Sun',
     texture: '/textures/sun.jpg',
@@ -119,7 +121,7 @@ const planetData: PlanetData[] = [
     orbitRadius: 40,
     orbitSpeed: 0.003,
     rotationSpeed: 0.038,
-    realOrbitRadius: 1_433.5,
+    realOrbitRadius: 1433.5,
   },
   {
     name: 'Uranus',
@@ -128,7 +130,7 @@ const planetData: PlanetData[] = [
     orbitRadius: 50,
     orbitSpeed: 0.002,
     rotationSpeed: -0.03,
-    realOrbitRadius: 2_872.5,
+    realOrbitRadius: 2872.5,
   },
   {
     name: 'Neptune',
@@ -137,7 +139,7 @@ const planetData: PlanetData[] = [
     orbitRadius: 60,
     orbitSpeed: 0.0018,
     rotationSpeed: 0.032,
-    realOrbitRadius: 4_495.1,
+    realOrbitRadius: 4495.1,
   },
 ];
 
@@ -201,7 +203,7 @@ const Planets: React.FC = () => {
     // Update moons
     moonsData.forEach((moon, index) => {
       const moonMesh = moonMeshRefs.current[index];
-      const parentMesh = planetMeshRefs.current[moon.parentIndex];
+      const parentMesh = planetMeshRefs.current[moon.parentIndex!];
 
       if (moonMesh && parentMesh) {
         const angle = elapsedTime * moon.orbitSpeed;

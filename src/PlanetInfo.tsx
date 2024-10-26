@@ -18,7 +18,7 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
-import { planetData } from './Planets'; // Import planetData to access realOrbitRadius
+import { planetData } from './Planets';
 
 interface PlanetDetails {
   description: string;
