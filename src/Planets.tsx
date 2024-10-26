@@ -27,7 +27,7 @@ const planetData: PlanetData[] = [
   {
     name: 'Sun',
     texture: '/textures/sun.jpg',
-    size: 5,
+    size: 4, // Adjusted size
     orbitRadius: 0,
     orbitSpeed: 0,
     rotationSpeed: 0.0007,
@@ -35,32 +35,32 @@ const planetData: PlanetData[] = [
   {
     name: 'Mercury',
     texture: '/textures/mercury.jpg',
-    size: 0.38,
-    orbitRadius: 10,
+    size: 0.5, // Increased size
+    orbitRadius: 8, // Decreased orbitRadius to bring it closer
     orbitSpeed: 0.04,
     rotationSpeed: 0.004,
   },
   {
     name: 'Venus',
     texture: '/textures/venus.jpg',
-    size: 0.95,
-    orbitRadius: 15,
+    size: 0.95, // Adjusted size
+    orbitRadius: 12,
     orbitSpeed: 0.015,
     rotationSpeed: -0.002,
   },
   {
     name: 'Earth',
     texture: '/textures/earth.jpg',
-    size: 1,
-    orbitRadius: 20,
+    size: 1, // Adjusted size
+    orbitRadius: 16,
     orbitSpeed: 0.01,
     rotationSpeed: 0.02,
     moons: [
       {
         name: 'Moon',
         texture: '/textures/moon.jpg',
-        size: 0.27,
-        orbitRadius: 2,
+        size: 0.27, // Adjusted size
+        orbitRadius: 1.5,
         orbitSpeed: 0.05,
       },
     ],
@@ -68,23 +68,23 @@ const planetData: PlanetData[] = [
   {
     name: 'Mars',
     texture: '/textures/mars.jpg',
-    size: 0.53,
-    orbitRadius: 25,
+    size: 0.8, // Increased size
+    orbitRadius: 20,
     orbitSpeed: 0.008,
     rotationSpeed: 0.018,
     moons: [
       {
         name: 'Phobos',
         texture: '/textures/phobos.jpg',
-        size: 0.01,
+        size: 0.1, // Adjusted size
         orbitRadius: 1,
         orbitSpeed: 0.08,
       },
       {
         name: 'Deimos',
         texture: '/textures/deimos.jpg',
-        size: 0.006,
-        orbitRadius: 1.5,
+        size: 0.08, // Adjusted size
+        orbitRadius: 1.3,
         orbitSpeed: 0.06,
       },
     ],
@@ -92,32 +92,32 @@ const planetData: PlanetData[] = [
   {
     name: 'Jupiter',
     texture: '/textures/jupiter.jpg',
-    size: 11.21,
-    orbitRadius: 35,
+    size: 2.5, // Reduced size
+    orbitRadius: 30, // Increased orbitRadius
     orbitSpeed: 0.004,
     rotationSpeed: 0.04,
   },
   {
     name: 'Saturn',
     texture: '/textures/saturn.jpg',
-    size: 9.45,
-    orbitRadius: 45,
+    size: 2.2, // Reduced size
+    orbitRadius: 40, // Increased orbitRadius
     orbitSpeed: 0.003,
     rotationSpeed: 0.038,
   },
   {
     name: 'Uranus',
     texture: '/textures/uranus.jpg',
-    size: 4.01,
-    orbitRadius: 55,
+    size: 1.5, // Adjusted size
+    orbitRadius: 50, // Increased orbitRadius
     orbitSpeed: 0.002,
     rotationSpeed: -0.03,
   },
   {
     name: 'Neptune',
     texture: '/textures/neptune.jpg',
-    size: 3.88,
-    orbitRadius: 65,
+    size: 1.5, // Adjusted size
+    orbitRadius: 60, // Increased orbitRadius
     orbitSpeed: 0.0018,
     rotationSpeed: 0.032,
   },

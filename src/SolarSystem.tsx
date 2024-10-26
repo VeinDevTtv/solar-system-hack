@@ -8,7 +8,7 @@ import Planets from './Planets';
 const SolarSystem: React.FC = () => {
   return (
     <Canvas
-      camera={{ position: [0, 20, 100], fov: 60 }}
+      camera={{ position: [0, 50, 100], fov: 60 }}
       style={{ height: '100vh', width: '100vw' }}
     >
       <ambientLight intensity={0.1} />
@@ -29,7 +29,7 @@ const SolarSystem: React.FC = () => {
         zoomSpeed={0.6}
         panSpeed={0.5}
         minDistance={10}
-        maxDistance={500}
+        maxDistance={200}
         autoRotate={true}
         autoRotateSpeed={0.2}
       />
