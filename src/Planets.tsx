@@ -15,46 +15,46 @@ interface MoonData {
 
 interface PlanetData {
   name: string;
-  position: [number, number, number];
   texture: string;
   size: number;
-  orbitSpeed: number;
   orbitRadius: number;
+  orbitSpeed: number;
+  rotationSpeed: number;
   moons?: MoonData[];
 }
 
 const planetData: PlanetData[] = [
   {
     name: 'Sun',
-    position: [0, 0, 0],
     texture: '/textures/sun.jpg',
     size: 5,
-    orbitSpeed: 0,
     orbitRadius: 0,
+    orbitSpeed: 0,
+    rotationSpeed: 0.0007,
   },
   {
     name: 'Mercury',
-    position: [10, 0, 0],
     texture: '/textures/mercury.jpg',
     size: 0.38,
-    orbitSpeed: 0.02,
     orbitRadius: 10,
+    orbitSpeed: 0.04,
+    rotationSpeed: 0.004,
   },
   {
     name: 'Venus',
-    position: [15, 0, 0],
     texture: '/textures/venus.jpg',
     size: 0.95,
-    orbitSpeed: 0.015,
     orbitRadius: 15,
+    orbitSpeed: 0.015,
+    rotationSpeed: -0.002,
   },
   {
     name: 'Earth',
-    position: [20, 0, 0],
     texture: '/textures/earth.jpg',
     size: 1,
-    orbitSpeed: 0.01,
     orbitRadius: 20,
+    orbitSpeed: 0.01,
+    rotationSpeed: 0.02,
     moons: [
       {
         name: 'Moon',
@@ -67,11 +67,11 @@ const planetData: PlanetData[] = [
   },
   {
     name: 'Mars',
-    position: [25, 0, 0],
     texture: '/textures/mars.jpg',
     size: 0.53,
-    orbitSpeed: 0.008,
     orbitRadius: 25,
+    orbitSpeed: 0.008,
+    rotationSpeed: 0.018,
     moons: [
       {
         name: 'Phobos',
@@ -91,35 +91,35 @@ const planetData: PlanetData[] = [
   },
   {
     name: 'Jupiter',
-    position: [35, 0, 0],
     texture: '/textures/jupiter.jpg',
     size: 11.21,
-    orbitSpeed: 0.005,
     orbitRadius: 35,
+    orbitSpeed: 0.004,
+    rotationSpeed: 0.04,
   },
   {
     name: 'Saturn',
-    position: [45, 0, 0],
     texture: '/textures/saturn.jpg',
     size: 9.45,
-    orbitSpeed: 0.004,
     orbitRadius: 45,
+    orbitSpeed: 0.003,
+    rotationSpeed: 0.038,
   },
   {
     name: 'Uranus',
-    position: [55, 0, 0],
     texture: '/textures/uranus.jpg',
     size: 4.01,
-    orbitSpeed: 0.003,
     orbitRadius: 55,
+    orbitSpeed: 0.002,
+    rotationSpeed: -0.03,
   },
   {
     name: 'Neptune',
-    position: [65, 0, 0],
     texture: '/textures/neptune.jpg',
     size: 3.88,
-    orbitSpeed: 0.002,
     orbitRadius: 65,
+    orbitSpeed: 0.0018,
+    rotationSpeed: 0.032,
   },
 ];
 
@@ -156,7 +156,7 @@ const Planets: React.FC = () => {
       const mesh = planetMeshRefs.current[index];
       if (mesh) {
         // Rotate celestial body on its axis
-        mesh.rotation.y += planet.name === 'Sun' ? 0.005 : 0.01;
+        mesh.rotation.y += planet.rotationSpeed;
 
         // Planetary revolution around the Sun
         if (planet.name !== 'Sun') {
@@ -183,6 +183,9 @@ const Planets: React.FC = () => {
         moonMesh.position.z =
           parentMesh.position.z + Math.sin(angle) * moon.orbitRadius;
         moonMesh.position.y = parentMesh.position.y;
+
+        // Rotate moon on its axis
+        moonMesh.rotation.y += 0.01;
       }
     });
   });
@@ -196,7 +199,7 @@ const Planets: React.FC = () => {
           <mesh
             ref={(el) => (planetMeshRefs.current[index] = el!)}
             onClick={() => setSelectedPlanet(planet.name)}
-            position={planet.name === 'Sun' ? planet.position : undefined}
+            position={planet.name === 'Sun' ? [0, 0, 0] : undefined}
           >
             <sphereGeometry args={[planet.size, 32, 32]} />
             <meshStandardMaterial

@@ -20,7 +20,105 @@ interface PlanetDetails {
 }
 
 const planetDetails: { [key: string]: PlanetDetails } = {
-  // ... existing planet details
+  Sun: {
+    description: 'The Sun is the star at the center of our solar system.',
+    image: '/images/sun.jpg',
+    details: {
+      'Mass (10^24 kg)': '1,989,100',
+      'Diameter (km)': '1,392,700',
+      'Moons': 'N/A',
+      'Orbit Period (days)': 'N/A',
+      'Surface Temperature (°C)': '5,500',
+    },
+  },
+  Mercury: {
+    description: 'Mercury is the closest planet to the Sun.',
+    image: '/images/mercury.jpg',
+    details: {
+      'Mass (10^24 kg)': '0.330',
+      'Diameter (km)': '4,879',
+      'Moons': '0',
+      'Orbit Period (days)': '88',
+      'Surface Temperature (°C)': '-173 to 427',
+    },
+  },
+  Venus: {
+    description: 'Venus is the second planet from the Sun.',
+    image: '/images/venus.jpg',
+    details: {
+      'Mass (10^24 kg)': '4.87',
+      'Diameter (km)': '12,104',
+      'Moons': '0',
+      'Orbit Period (days)': '225',
+      'Surface Temperature (°C)': '462',
+    },
+  },
+  Earth: {
+    description: 'Earth is our home planet.',
+    image: '/images/earth.jpg',
+    details: {
+      'Mass (10^24 kg)': '5.97',
+      'Diameter (km)': '12,756',
+      'Moons': '1',
+      'Orbit Period (days)': '365.24',
+      'Surface Temperature (°C)': '-88 to 58',
+    },
+  },
+  Mars: {
+    description: 'Mars is known as the Red Planet.',
+    image: '/images/mars.jpg',
+    details: {
+      'Mass (10^24 kg)': '0.642',
+      'Diameter (km)': '6,792',
+      'Moons': '2',
+      'Orbit Period (days)': '687',
+      'Surface Temperature (°C)': '-87 to -5',
+    },
+  },
+  Jupiter: {
+    description: 'Jupiter is the largest planet in our solar system.',
+    image: '/images/jupiter.jpg',
+    details: {
+      'Mass (10^24 kg)': '1,898',
+      'Diameter (km)': '142,984',
+      'Moons': '79',
+      'Orbit Period (days)': '4,333',
+      'Surface Temperature (°C)': '-108',
+    },
+  },
+  Saturn: {
+    description: 'Saturn is famous for its beautiful rings.',
+    image: '/images/saturn.jpg',
+    details: {
+      'Mass (10^24 kg)': '568',
+      'Diameter (km)': '120,536',
+      'Moons': '82',
+      'Orbit Period (days)': '10,756',
+      'Surface Temperature (°C)': '-139',
+    },
+  },
+  Uranus: {
+    description: 'Uranus has a unique sideways rotation.',
+    image: '/images/uranus.jpg',
+    details: {
+      'Mass (10^24 kg)': '86.8',
+      'Diameter (km)': '51,118',
+      'Moons': '27',
+      'Orbit Period (days)': '30,687',
+      'Surface Temperature (°C)': '-195',
+    },
+  },
+  Neptune: {
+    description: 'Neptune is known for its intense blue color.',
+    image: '/images/neptune.jpg',
+    details: {
+      'Mass (10^24 kg)': '102',
+      'Diameter (km)': '49,528',
+      'Moons': '14',
+      'Orbit Period (days)': '60,190',
+      'Surface Temperature (°C)': '-201',
+    },
+  },
   Moon: {
     description: "Earth's only natural satellite.",
     image: '/images/moon.jpg',
