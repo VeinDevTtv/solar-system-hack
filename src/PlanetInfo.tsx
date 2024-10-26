@@ -1,4 +1,8 @@
-// src/PlanetInfo.tsx
+// File Name: PlanetInfo.tsx
+// Author: Abdelkarim
+// Purpose: Displays detailed information about the selected planet, including distances in scene units and approximate kilometers.
+// Date: 10/26/2024
+
 import React from 'react';
 import { usePlanetStore } from './store';
 import {

@@ -1,4 +1,8 @@
-// src/Planets.tsx
+// File Name: Planets.tsx
+// Author: Abdelkarim
+// Purpose: Renders all planets and moons, updates their positions, and handles interactions.
+// Date: 10/26/2024
+
 import React, { useRef } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { TextureLoader, Mesh, DoubleSide } from 'three';

@@ -1,4 +1,8 @@
-// src/SolarSystem.tsx
+// File Name: SolarSystem.tsx
+// Author: Abdelkarim
+// Purpose: Sets up the Three.js canvas, camera, controls, and includes the Planets component.
+// Date: 10/26/2024
+
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';

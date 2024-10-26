@@ -1,4 +1,8 @@
-// src/App.tsx
+// File Name: App.tsx
+// Author: Abdelkarim
+// Purpose: Main application component that includes the SolarSystem and PlanetInfo components.
+// Date: 10/26/2024
+
 import React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';

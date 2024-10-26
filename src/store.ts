@@ -1,4 +1,8 @@
-// src/store.ts
+// File Name: store.ts
+// Author: Abdelkarim
+// Purpose: Manages global state using Zustand for selected planet, target planet, and planet positions.
+// Date: 10/26/2024
+
 import { create } from 'zustand';
 
 interface PlanetPosition {
