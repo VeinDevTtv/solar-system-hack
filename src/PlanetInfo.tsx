@@ -14,6 +14,7 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
+import { planetData } from './Planets'; // Import planetData to access realOrbitRadius
 
 interface PlanetDetails {
   description: string;
@@ -192,23 +193,44 @@ const PlanetInfo: React.FC = () => {
   const sunPosition = planetPositions['Sun'];
 
   let distanceToSun = null;
+  let distanceToSunKM = null;
+
   if (planetPosition && sunPosition) {
     const dx = planetPosition[0] - sunPosition[0];
     const dy = planetPosition[1] - sunPosition[1];
     const dz = planetPosition[2] - sunPosition[2];
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    distanceToSun = distance.toFixed(2); // Limit to two decimal places
+    distanceToSun = distance.toFixed(2); // Scene units
+
+    // Get realOrbitRadius from planetData
+    const planetInfo = planetData.find((p) => p.name === selectedPlanet);
+    if (planetInfo) {
+      distanceToSunKM = (planetInfo.realOrbitRadius * 1_000_000).toLocaleString(); // in km
+    }
   }
 
   // Compute distance to target planet
   let distanceToTarget = null;
+  let distanceToTargetKM = null;
+
   if (targetPlanet && planetPositions[targetPlanet]) {
     const targetPosition = planetPositions[targetPlanet];
     const dx = planetPosition[0] - targetPosition[0];
     const dy = planetPosition[1] - targetPosition[1];
     const dz = planetPosition[2] - targetPosition[2];
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    distanceToTarget = distance.toFixed(2);
+    distanceToTarget = distance.toFixed(2); // Scene units
+
+    // Get realOrbitRadius for both planets
+    const planetInfo = planetData.find((p) => p.name === selectedPlanet);
+    const targetPlanetInfo = planetData.find((p) => p.name === targetPlanet);
+
+    if (planetInfo && targetPlanetInfo) {
+      const distanceKM =
+        Math.abs(planetInfo.realOrbitRadius - targetPlanetInfo.realOrbitRadius) *
+        1_000_000; // in km
+      distanceToTargetKM = distanceKM.toLocaleString();
+    }
   }
 
   return (
@@ -249,7 +271,7 @@ const PlanetInfo: React.FC = () => {
             <ListItem disableGutters>
               <ListItemText
                 primary="Distance to Sun:"
-                secondary={`${distanceToSun} units`}
+                secondary={`${distanceToSun} units (~${distanceToSunKM} km)`}
                 primaryTypographyProps={{ variant: 'body2', color: 'text.primary' }}
                 secondaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
               />
@@ -259,14 +281,14 @@ const PlanetInfo: React.FC = () => {
             <ListItem disableGutters>
               <ListItemText
                 primary={`Distance to ${targetPlanet}:`}
-                secondary={`${distanceToTarget} units`}
+                secondary={`${distanceToTarget} units (~${distanceToTargetKM} km)`}
                 primaryTypographyProps={{ variant: 'body2', color: 'text.primary' }}
                 secondaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
               />
             </ListItem>
           )}
         </List>
-        <FormControl fullWidth>
+        <FormControl fullWidth sx={{ marginTop: 2 }}>
           <InputLabel id="target-planet-label">Target Planet</InputLabel>
           <Select
             labelId="target-planet-label"
