@@ -9,8 +9,8 @@ interface OrbitProps {
 
 const Orbit: React.FC<OrbitProps> = ({ radius }) => {
   const points: [number, number, number][] = [];
-  for (let i = 0; i <= 64; i++) {
-    const angle = (i / 64) * Math.PI * 2;
+  for (let i = 0; i <= 128; i++) {
+    const angle = (i / 128) * Math.PI * 2;
     points.push([
       Math.cos(angle) * radius,
       0,
@@ -21,9 +21,11 @@ const Orbit: React.FC<OrbitProps> = ({ radius }) => {
   return (
     <Line
       points={points}
-      color="gray"
-      lineWidth={1}
-      dashed={false}
+      color="white"
+      lineWidth={0.5}
+      dashed
+      dashSize={0.5}
+      gapSize={0.5}
     />
   );
 };
