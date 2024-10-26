@@ -125,16 +125,35 @@ const planetData: PlanetData[] = [
 
 const Planets: React.FC = () => {
   const { setSelectedPlanet } = usePlanetStore();
-  const meshRefs = useRef<Mesh[]>([]);
-  const textures = useLoader(
+
+  // Refs for planets
+  const planetMeshRefs = useRef<Mesh[]>([]);
+  const planetTextures = useLoader(
     TextureLoader,
     planetData.map((planet) => planet.texture)
   );
 
+  // Prepare moon data
+  const moonsData = planetData.flatMap((planet, pIndex) =>
+    planet.moons?.map((moon) => ({
+      ...moon,
+      parentIndex: pIndex,
+    })) || []
+  );
+
+  // Refs and textures for moons
+  const moonMeshRefs = useRef<Mesh[]>([]);
+  const moonTextures = useLoader(
+    TextureLoader,
+    moonsData.map((moon) => moon.texture)
+  );
+
   useFrame((state) => {
     const elapsedTime = state.clock.getElapsedTime();
+
+    // Update planets
     planetData.forEach((planet, index) => {
-      const mesh = meshRefs.current[index];
+      const mesh = planetMeshRefs.current[index];
       if (mesh) {
         // Rotate celestial body on its axis
         mesh.rotation.y += planet.name === 'Sun' ? 0.005 : 0.01;
@@ -150,58 +169,55 @@ const Planets: React.FC = () => {
         }
       }
     });
+
+    // Update moons
+    moonsData.forEach((moon, index) => {
+      const moonMesh = moonMeshRefs.current[index];
+      const parentMesh = planetMeshRefs.current[moon.parentIndex];
+
+      if (moonMesh && parentMesh) {
+        const angle = elapsedTime * moon.orbitSpeed;
+
+        moonMesh.position.x =
+          parentMesh.position.x + Math.cos(angle) * moon.orbitRadius;
+        moonMesh.position.z =
+          parentMesh.position.z + Math.sin(angle) * moon.orbitRadius;
+        moonMesh.position.y = parentMesh.position.y;
+      }
+    });
   });
 
   return (
     <>
+      {/* Render Planets */}
       {planetData.map((planet, index) => (
         <group key={planet.name}>
           {planet.name !== 'Sun' && <Orbit radius={planet.orbitRadius} />}
           <mesh
-            ref={(el) => (meshRefs.current[index] = el!)}
+            ref={(el) => (planetMeshRefs.current[index] = el!)}
             onClick={() => setSelectedPlanet(planet.name)}
             position={planet.name === 'Sun' ? planet.position : undefined}
           >
             <sphereGeometry args={[planet.size, 32, 32]} />
             <meshStandardMaterial
-              map={textures[index]}
+              map={planetTextures[index]}
               emissive={planet.name === 'Sun' ? 'yellow' : undefined}
               emissiveIntensity={planet.name === 'Sun' ? 1 : undefined}
             />
           </mesh>
-
-          {/* Render Moons */}
-          {planet.moons &&
-            planet.moons.map((moon, mIndex) => {
-              const moonRef = useRef<Mesh>(null);
-              const moonTexture = useLoader(TextureLoader, moon.texture);
-
-              useFrame((state) => {
-                if (moonRef.current) {
-                  const elapsedTime = state.clock.getElapsedTime();
-                  const angle = elapsedTime * moon.orbitSpeed;
-                  const parentPosition = meshRefs.current[index].position;
-
-                  moonRef.current.position.x =
-                    parentPosition.x + Math.cos(angle) * moon.orbitRadius;
-                  moonRef.current.position.z =
-                    parentPosition.z + Math.sin(angle) * moon.orbitRadius;
-                  moonRef.current.position.y = parentPosition.y;
-                }
-              });
-
-              return (
-                <mesh
-                  key={moon.name}
-                  ref={moonRef}
-                  onClick={() => setSelectedPlanet(moon.name)}
-                >
-                  <sphereGeometry args={[moon.size, 16, 16]} />
-                  <meshStandardMaterial map={moonTexture} />
-                </mesh>
-              );
-            })}
         </group>
+      ))}
+
+      {/* Render Moons */}
+      {moonsData.map((moon, index) => (
+        <mesh
+          key={moon.name}
+          ref={(el) => (moonMeshRefs.current[index] = el!)}
+          onClick={() => setSelectedPlanet(moon.name)}
+        >
+          <sphereGeometry args={[moon.size, 16, 16]} />
+          <meshStandardMaterial map={moonTextures[index]} />
+        </mesh>
       ))}
     </>
   );

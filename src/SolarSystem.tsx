@@ -1,7 +1,8 @@
 // src/SolarSystem.tsx
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stars, EffectComposer, Bloom } from '@react-three/drei';
+import { OrbitControls, Stars } from '@react-three/drei';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import Planets from './Planets';
 
 const SolarSystem: React.FC = () => {
