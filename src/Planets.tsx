@@ -181,7 +181,6 @@ const Planets: React.FC = () => {
         // Rotate celestial body on its axis
         mesh.rotation.y += planet.rotationSpeed;
 
-        // Planetary revolution around the Sun
         if (planet.name !== 'Sun') {
           const orbitRadius = planet.orbitRadius;
           const speed = planet.orbitSpeed;
@@ -217,12 +216,13 @@ const Planets: React.FC = () => {
         // Rotate moon on its axis
         moonMesh.rotation.y += 0.01;
 
-        // Optionally update moon positions in the store if needed
+        // FIXME: Update moon positions in the store
         // setPlanetPosition(moon.name, [
         //   moonMesh.position.x,
         //   moonMesh.position.y,
         //   moonMesh.position.z,
-        // ]);
+        // ]); I could add it now and I should add it so it shows in the distance to and from the moon, 
+        //     but I need to mess up with other things and that will take ore time.
       }
     });
   });

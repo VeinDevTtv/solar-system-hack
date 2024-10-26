@@ -1,6 +1,7 @@
 // File Name: PlanetInfo.tsx
 // Author: Abdelkarim
-// Purpose: Displays detailed information about the selected planet, including distances in scene units and approximate kilometers.
+// Purpose: Displays detailed information about the selected planet,
+// including distances in scene units and approximate kilometers.
 // Date: 10/26/2024
 
 import React from 'react';
@@ -63,7 +64,7 @@ const planetDetails: { [key: string]: PlanetDetails } = {
     },
   },
   Earth: {
-    description: 'Earth is our home planet.',
+    description: 'Earth is our home planet. Fun fact: Some weird creatures live here and they\'re creating something called a hackathon where they make some weird and complicated things.',
     image: '/images/earth.jpg',
     details: {
       'Mass (10^24 kg)': '5.97',
@@ -206,7 +207,7 @@ const PlanetInfo: React.FC = () => {
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
     distanceToSun = distance.toFixed(2); // Scene units
 
-    // Get realOrbitRadius from planetData
+    // Trying to get realOrbitRadius from planetData. Pretty positive this works
     const planetInfo = planetData.find((p) => p.name === selectedPlanet);
     if (planetInfo) {
       distanceToSunKM = (planetInfo.realOrbitRadius * 1_000_000).toLocaleString(); // in km
@@ -226,6 +227,7 @@ const PlanetInfo: React.FC = () => {
     distanceToTarget = distance.toFixed(2); // Scene units
 
     // Get realOrbitRadius for both planets
+    // FIXME: This sometimes makes the code slow but without it, it will crash, soooooo
     const planetInfo = planetData.find((p) => p.name === selectedPlanet);
     const targetPlanetInfo = planetData.find((p) => p.name === targetPlanet);
 
