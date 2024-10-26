@@ -124,7 +124,7 @@ const planetData: PlanetData[] = [
 ];
 
 const Planets: React.FC = () => {
-  const { setSelectedPlanet } = usePlanetStore();
+  const { setSelectedPlanet, setPlanetPosition } = usePlanetStore();
 
   // Refs for planets
   const planetMeshRefs = useRef<Mesh[]>([]);
@@ -170,6 +170,13 @@ const Planets: React.FC = () => {
           mesh.position.x = Math.cos(angle) * orbitRadius;
           mesh.position.z = Math.sin(angle) * orbitRadius;
         }
+
+        // Update the planet's position in the store
+        setPlanetPosition(planet.name, [
+          mesh.position.x,
+          mesh.position.y,
+          mesh.position.z,
+        ]);
       }
     });
 
@@ -189,6 +196,13 @@ const Planets: React.FC = () => {
 
         // Rotate moon on its axis
         moonMesh.rotation.y += 0.01;
+
+        // Optionally update moon positions in the store if needed
+        // setPlanetPosition(moon.name, [
+        //   moonMesh.position.x,
+        //   moonMesh.position.y,
+        //   moonMesh.position.z,
+        // ]);
       }
     });
   });

@@ -9,6 +9,10 @@ import {
   List,
   ListItem,
   ListItemText,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 
 interface PlanetDetails {
@@ -152,7 +156,13 @@ const planetDetails: { [key: string]: PlanetDetails } = {
 };
 
 const PlanetInfo: React.FC = () => {
-  const { selectedPlanet } = usePlanetStore();
+  const {
+    selectedPlanet,
+    targetPlanet,
+    setTargetPlanet,
+    planetPositions,
+  } = usePlanetStore();
+
   if (!selectedPlanet) return null;
 
   const planet = planetDetails[selectedPlanet];
@@ -175,6 +185,30 @@ const PlanetInfo: React.FC = () => {
         </CardContent>
       </Card>
     );
+  }
+
+  // Compute distance to Sun
+  const planetPosition = planetPositions[selectedPlanet];
+  const sunPosition = planetPositions['Sun'];
+
+  let distanceToSun = null;
+  if (planetPosition && sunPosition) {
+    const dx = planetPosition[0] - sunPosition[0];
+    const dy = planetPosition[1] - sunPosition[1];
+    const dz = planetPosition[2] - sunPosition[2];
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    distanceToSun = distance.toFixed(2); // Limit to two decimal places
+  }
+
+  // Compute distance to target planet
+  let distanceToTarget = null;
+  if (targetPlanet && planetPositions[targetPlanet]) {
+    const targetPosition = planetPositions[targetPlanet];
+    const dx = planetPosition[0] - targetPosition[0];
+    const dy = planetPosition[1] - targetPosition[1];
+    const dz = planetPosition[2] - targetPosition[2];
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    distanceToTarget = distance.toFixed(2);
   }
 
   return (
@@ -211,7 +245,47 @@ const PlanetInfo: React.FC = () => {
               />
             </ListItem>
           ))}
+          {distanceToSun && (
+            <ListItem disableGutters>
+              <ListItemText
+                primary="Distance to Sun:"
+                secondary={`${distanceToSun} units`}
+                primaryTypographyProps={{ variant: 'body2', color: 'text.primary' }}
+                secondaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
+              />
+            </ListItem>
+          )}
+          {distanceToTarget && (
+            <ListItem disableGutters>
+              <ListItemText
+                primary={`Distance to ${targetPlanet}:`}
+                secondary={`${distanceToTarget} units`}
+                primaryTypographyProps={{ variant: 'body2', color: 'text.primary' }}
+                secondaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
+              />
+            </ListItem>
+          )}
         </List>
+        <FormControl fullWidth>
+          <InputLabel id="target-planet-label">Target Planet</InputLabel>
+          <Select
+            labelId="target-planet-label"
+            value={targetPlanet || ''}
+            label="Target Planet"
+            onChange={(e) => setTargetPlanet(e.target.value || null)}
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {Object.keys(planetDetails)
+              .filter((name) => name !== selectedPlanet)
+              .map((name) => (
+                <MenuItem key={name} value={name}>
+                  {name}
+                </MenuItem>
+              ))}
+          </Select>
+        </FormControl>
       </CardContent>
     </Card>
   );
