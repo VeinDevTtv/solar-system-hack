@@ -5,6 +5,14 @@ import { TextureLoader, Mesh } from 'three';
 import { usePlanetStore } from './store';
 import Orbit from './Orbit';
 
+interface MoonData {
+  name: string;
+  texture: string;
+  size: number;
+  orbitRadius: number;
+  orbitSpeed: number;
+}
+
 interface PlanetData {
   name: string;
   position: [number, number, number];
@@ -12,6 +20,7 @@ interface PlanetData {
   size: number;
   orbitSpeed: number;
   orbitRadius: number;
+  moons?: MoonData[];
 }
 
 const planetData: PlanetData[] = [
@@ -46,6 +55,15 @@ const planetData: PlanetData[] = [
     size: 1,
     orbitSpeed: 0.01,
     orbitRadius: 20,
+    moons: [
+      {
+        name: 'Moon',
+        texture: '/textures/moon.jpg',
+        size: 0.27,
+        orbitRadius: 2,
+        orbitSpeed: 0.05,
+      },
+    ],
   },
   {
     name: 'Mars',
@@ -54,6 +72,22 @@ const planetData: PlanetData[] = [
     size: 0.53,
     orbitSpeed: 0.008,
     orbitRadius: 25,
+    moons: [
+      {
+        name: 'Phobos',
+        texture: '/textures/phobos.jpg',
+        size: 0.01,
+        orbitRadius: 1,
+        orbitSpeed: 0.08,
+      },
+      {
+        name: 'Deimos',
+        texture: '/textures/deimos.jpg',
+        size: 0.006,
+        orbitRadius: 1.5,
+        orbitSpeed: 0.06,
+      },
+    ],
   },
   {
     name: 'Jupiter',
@@ -122,17 +156,6 @@ const Planets: React.FC = () => {
     <>
       {planetData.map((planet, index) => (
         <group key={planet.name}>
-          {planet.name === 'Saturn' && (
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[planet.size + 0.5, planet.size + 1, 32]} />
-            <meshStandardMaterial
-              color="grey"
-              side={2} // DoubleSide
-              transparent={true}
-              opacity={0.7}
-            />
-          </mesh>
-          )}
           {planet.name !== 'Sun' && <Orbit radius={planet.orbitRadius} />}
           <mesh
             ref={(el) => (meshRefs.current[index] = el!)}
@@ -146,6 +169,38 @@ const Planets: React.FC = () => {
               emissiveIntensity={planet.name === 'Sun' ? 1 : undefined}
             />
           </mesh>
+
+          {/* Render Moons */}
+          {planet.moons &&
+            planet.moons.map((moon, mIndex) => {
+              const moonRef = useRef<Mesh>(null);
+              const moonTexture = useLoader(TextureLoader, moon.texture);
+
+              useFrame((state) => {
+                if (moonRef.current) {
+                  const elapsedTime = state.clock.getElapsedTime();
+                  const angle = elapsedTime * moon.orbitSpeed;
+                  const parentPosition = meshRefs.current[index].position;
+
+                  moonRef.current.position.x =
+                    parentPosition.x + Math.cos(angle) * moon.orbitRadius;
+                  moonRef.current.position.z =
+                    parentPosition.z + Math.sin(angle) * moon.orbitRadius;
+                  moonRef.current.position.y = parentPosition.y;
+                }
+              });
+
+              return (
+                <mesh
+                  key={moon.name}
+                  ref={moonRef}
+                  onClick={() => setSelectedPlanet(moon.name)}
+                >
+                  <sphereGeometry args={[moon.size, 16, 16]} />
+                  <meshStandardMaterial map={moonTexture} />
+                </mesh>
+              );
+            })}
         </group>
       ))}
     </>
