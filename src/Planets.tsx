@@ -132,6 +132,8 @@ const Planets: React.FC = () => {
     TextureLoader,
     planetData.map((planet) => planet.texture)
   );
+
+  // Load the ring texture for Saturn's rings
   const ringTexture = useLoader(TextureLoader, '/textures/saturn_ring.png');
 
   // Prepare moon data
@@ -215,10 +217,10 @@ const Planets: React.FC = () => {
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <ringGeometry args={[planet.size * 1.4, planet.size * 2, 64]} />
               <meshStandardMaterial
-                color="gray"
+                map={ringTexture}
                 side={DoubleSide}
                 transparent={true}
-                opacity={0.5}
+                opacity={0.8}
               />
             </mesh>
           )}
