@@ -13,6 +13,12 @@
   }
 }
 
+canvas {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+}
+
 .App-header {
   background-color: #282c34;
   min-height: 100vh;
@@ -36,3 +42,15 @@
     transform: rotate(360deg);
   }
 }
+
+/* src/App.css */
+.planet-info {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0,0,0,0.7);
+  padding: 20px;
+  color: white;
+  border-radius: 10px;
+}
+
