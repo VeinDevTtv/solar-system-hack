@@ -3,7 +3,7 @@
 // Purpose: Renders all planets and moons, updates their positions, and handles interactions.
 // Date: 10/26/2024
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { TextureLoader, Mesh, DoubleSide } from 'three';
 import { usePlanetStore } from './store';
@@ -15,7 +15,10 @@ interface MoonData {
   size: number;
   orbitRadius: number;
   orbitSpeed: number;
-  realOrbitRadius?: number; // in million km
+  realOrbitRadius: number; // in million km
+  realDiameter: number; // in km
+  rotationSpeed: number; // in radians per frame
+  orbitalPeriod: number; // in Earth days
   parentIndex?: number;
 }
 
@@ -27,123 +30,177 @@ interface PlanetData {
   orbitSpeed: number;
   rotationSpeed: number;
   realOrbitRadius: number; // in million km
+  realDiameter: number; // in km
+  orbitalPeriod: number; // in Earth days
+  axialTilt?: number; // in degrees
   moons?: MoonData[];
 }
+
+// Constants for scale conversion
+const SIZE_SCALE_FACTOR = 0.00003; // 1 km = 0.00003 scene units
+const DISTANCE_SCALE_FACTOR = 0.03; // 1 million km = 0.03 scene units
+const TIME_SCALE_FACTOR = 0.005; // Days to animation speed conversion
+
+// Apply scale conversions to make visualization possible
+const scaleSize = (realSizeKm: number) => Math.max(0.3, realSizeKm * SIZE_SCALE_FACTOR);
+const scaleDistance = (realDistanceMKm: number) => realDistanceMKm * DISTANCE_SCALE_FACTOR;
+const scaleSpeed = (orbitalPeriodDays: number) => (orbitalPeriodDays ? 2 * Math.PI / (orbitalPeriodDays * TIME_SCALE_FACTOR) : 0);
+const scaleRotation = (rotationPeriodHours: number) => rotationPeriodHours ? 0.005 / rotationPeriodHours : 0;
 
 // Exporting planetData
 export const planetData: PlanetData[] = [
   {
     name: 'Sun',
     texture: '/textures/sun.jpg',
-    size: 4,
+    size: scaleSize(1392000), // Diameter in km
     orbitRadius: 0,
     orbitSpeed: 0,
-    rotationSpeed: 0.0007,
+    rotationSpeed: scaleRotation(609.6), // Rotation period in hours
     realOrbitRadius: 0,
+    realDiameter: 1392000,
+    orbitalPeriod: 0,
   },
   {
     name: 'Mercury',
     texture: '/textures/mercury.jpg',
-    size: 0.5,
-    orbitRadius: 8,
-    orbitSpeed: 0.04,
-    rotationSpeed: 0.004,
+    size: scaleSize(4879),
+    orbitRadius: scaleDistance(57.9),
+    orbitSpeed: scaleSpeed(88),
+    rotationSpeed: scaleRotation(1407.6), // 58.65 days
     realOrbitRadius: 57.9,
+    realDiameter: 4879,
+    orbitalPeriod: 88,
+    axialTilt: 0.034,
   },
   {
     name: 'Venus',
     texture: '/textures/venus.jpg',
-    size: 0.95,
-    orbitRadius: 12,
-    orbitSpeed: 0.015,
-    rotationSpeed: -0.002,
+    size: scaleSize(12104),
+    orbitRadius: scaleDistance(108.2),
+    orbitSpeed: scaleSpeed(224.7),
+    rotationSpeed: scaleRotation(-5832), // Retrograde rotation
     realOrbitRadius: 108.2,
+    realDiameter: 12104,
+    orbitalPeriod: 224.7,
+    axialTilt: 177.4,
   },
   {
     name: 'Earth',
     texture: '/textures/earth.jpg',
-    size: 1,
-    orbitRadius: 16,
-    orbitSpeed: 0.01,
-    rotationSpeed: 0.02,
+    size: scaleSize(12756),
+    orbitRadius: scaleDistance(149.6),
+    orbitSpeed: scaleSpeed(365.2),
+    rotationSpeed: scaleRotation(24),
     realOrbitRadius: 149.6,
+    realDiameter: 12756,
+    orbitalPeriod: 365.2,
+    axialTilt: 23.4,
     moons: [
       {
         name: 'Moon',
         texture: '/textures/moon.jpg',
-        size: 0.27,
-        orbitRadius: 1.5,
-        orbitSpeed: 0.05,
-        realOrbitRadius: 0.384, // in million km
+        size: scaleSize(3475),
+        orbitRadius: scaleDistance(0.384),
+        orbitSpeed: scaleSpeed(27.3),
+        rotationSpeed: scaleRotation(655.2), // Tidally locked to Earth
+        realOrbitRadius: 0.384,
+        realDiameter: 3475,
+        orbitalPeriod: 27.3,
       },
     ],
   },
   {
     name: 'Mars',
     texture: '/textures/mars.jpg',
-    size: 0.8,
-    orbitRadius: 20,
-    orbitSpeed: 0.008,
-    rotationSpeed: 0.018,
+    size: scaleSize(6792),
+    orbitRadius: scaleDistance(227.9),
+    orbitSpeed: scaleSpeed(687),
+    rotationSpeed: scaleRotation(24.7),
     realOrbitRadius: 227.9,
+    realDiameter: 6792,
+    orbitalPeriod: 687,
+    axialTilt: 25.2,
     moons: [
       {
         name: 'Phobos',
         texture: '/textures/phobos.jpg',
-        size: 0.1,
-        orbitRadius: 1,
-        orbitSpeed: 0.08,
-        realOrbitRadius: 0.0094, // in million km
+        size: scaleSize(22.2),
+        orbitRadius: scaleDistance(0.0094),
+        orbitSpeed: scaleSpeed(0.3189),
+        rotationSpeed: scaleRotation(7.66), // Tidally locked to Mars
+        realOrbitRadius: 0.0094,
+        realDiameter: 22.2,
+        orbitalPeriod: 0.3189,
       },
       {
         name: 'Deimos',
         texture: '/textures/deimos.jpg',
-        size: 0.08,
-        orbitRadius: 1.3,
-        orbitSpeed: 0.06,
-        realOrbitRadius: 0.023, // in million km
+        size: scaleSize(12.6),
+        orbitRadius: scaleDistance(0.0235),
+        orbitSpeed: scaleSpeed(1.263),
+        rotationSpeed: scaleRotation(30.3), // Tidally locked to Mars
+        realOrbitRadius: 0.0235,
+        realDiameter: 12.6,
+        orbitalPeriod: 1.263,
       },
     ],
   },
   {
     name: 'Jupiter',
     texture: '/textures/jupiter.jpg',
-    size: 2.5,
-    orbitRadius: 30,
-    orbitSpeed: 0.004,
-    rotationSpeed: 0.04,
+    size: scaleSize(142984),
+    orbitRadius: scaleDistance(778.6),
+    orbitSpeed: scaleSpeed(4333),
+    rotationSpeed: scaleRotation(9.9),
     realOrbitRadius: 778.6,
+    realDiameter: 142984,
+    orbitalPeriod: 4333,
+    axialTilt: 3.1,
   },
   {
     name: 'Saturn',
     texture: '/textures/saturn.jpg',
-    size: 2.2,
-    orbitRadius: 40,
-    orbitSpeed: 0.003,
-    rotationSpeed: 0.038,
+    size: scaleSize(120536),
+    orbitRadius: scaleDistance(1433.5),
+    orbitSpeed: scaleSpeed(10759),
+    rotationSpeed: scaleRotation(10.7),
     realOrbitRadius: 1433.5,
+    realDiameter: 120536,
+    orbitalPeriod: 10759,
+    axialTilt: 26.7,
   },
   {
     name: 'Uranus',
     texture: '/textures/uranus.jpg',
-    size: 1.5,
-    orbitRadius: 50,
-    orbitSpeed: 0.002,
-    rotationSpeed: -0.03,
+    size: scaleSize(51118),
+    orbitRadius: scaleDistance(2872.5),
+    orbitSpeed: scaleSpeed(30687),
+    rotationSpeed: scaleRotation(-17.2), // Retrograde rotation
     realOrbitRadius: 2872.5,
+    realDiameter: 51118,
+    orbitalPeriod: 30687,
+    axialTilt: 97.8,
   },
   {
     name: 'Neptune',
     texture: '/textures/neptune.jpg',
-    size: 1.5,
-    orbitRadius: 60,
-    orbitSpeed: 0.0018,
-    rotationSpeed: 0.032,
+    size: scaleSize(49528),
+    orbitRadius: scaleDistance(4495.1),
+    orbitSpeed: scaleSpeed(60190),
+    rotationSpeed: scaleRotation(16.1),
     realOrbitRadius: 4495.1,
+    realDiameter: 49528,
+    orbitalPeriod: 60190,
+    axialTilt: 28.3,
   },
 ];
 
-const Planets: React.FC = () => {
+// Accept time scale from parent component
+interface PlanetsProps {
+  timeScale: number;
+}
+
+const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
   const { setSelectedPlanet, setPlanetPosition } = usePlanetStore();
 
   // Refs for planets
@@ -172,14 +229,19 @@ const Planets: React.FC = () => {
   );
 
   useFrame((state) => {
-    const elapsedTime = state.clock.getElapsedTime();
+    const elapsedTime = state.clock.getElapsedTime() * timeScale;
 
     // Update planets
     planetData.forEach((planet, index) => {
       const mesh = planetMeshRefs.current[index];
       if (mesh) {
+        // Apply axial tilt if defined
+        if (planet.axialTilt && mesh.rotation.x === 0) {
+          mesh.rotation.x = (planet.axialTilt * Math.PI) / 180;
+        }
+
         // Rotate celestial body on its axis
-        mesh.rotation.y += planet.rotationSpeed;
+        mesh.rotation.y += planet.rotationSpeed * timeScale;
 
         if (planet.name !== 'Sun') {
           const orbitRadius = planet.orbitRadius;
@@ -213,16 +275,15 @@ const Planets: React.FC = () => {
           parentMesh.position.z + Math.sin(angle) * moon.orbitRadius;
         moonMesh.position.y = parentMesh.position.y;
 
-        // Rotate moon on its axis
-        moonMesh.rotation.y += 0.01;
+        // Rotate moon on its axis (many moons are tidally locked)
+        moonMesh.rotation.y += moon.rotationSpeed * timeScale;
 
-        // FIXME: Update moon positions in the store
-        // setPlanetPosition(moon.name, [
-        //   moonMesh.position.x,
-        //   moonMesh.position.y,
-        //   moonMesh.position.z,
-        // ]); I could add it now and I should add it so it shows in the distance to and from the moon, 
-        //     but I need to mess up with other things and that will take ore time.
+        // Update moon positions in the store
+        setPlanetPosition(moon.name, [
+          moonMesh.position.x,
+          moonMesh.position.y,
+          moonMesh.position.z,
+        ]);
       }
     });
   });
@@ -248,13 +309,26 @@ const Planets: React.FC = () => {
 
           {/* Add Rings to Saturn */}
           {planet.name === 'Saturn' && (
-            <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[planet.size * 1.4, planet.size * 2, 64]} />
+            <mesh rotation={[-Math.PI / 2 + ((planet.axialTilt || 0) * Math.PI) / 180, 0, 0]}>
+              <ringGeometry args={[planet.size * 1.4, planet.size * 2.2, 64]} />
               <meshStandardMaterial
                 map={ringTexture}
                 side={DoubleSide}
                 transparent={true}
                 opacity={0.8}
+              />
+            </mesh>
+          )}
+          
+          {/* Add Rings to Uranus (fainter than Saturn's) */}
+          {planet.name === 'Uranus' && (
+            <mesh rotation={[-Math.PI / 2 + ((planet.axialTilt || 0) * Math.PI) / 180, 0, 0]}>
+              <ringGeometry args={[planet.size * 1.3, planet.size * 1.8, 64]} />
+              <meshStandardMaterial
+                color="#d3d3d3"
+                side={DoubleSide}
+                transparent={true}
+                opacity={0.4}
               />
             </mesh>
           )}
