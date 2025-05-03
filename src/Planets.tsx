@@ -6,6 +6,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { TextureLoader, Mesh, DoubleSide, Color } from 'three';
+import * as Astronomy from 'astronomy-engine'; // Import the library
 import { usePlanetStore } from './store';
 import Orbit from './Orbit';
 
@@ -25,86 +26,68 @@ interface MoonData {
 interface PlanetData {
   name: string;
   texture: string;
-  size: number;
-  orbitRadius: number;
-  orbitSpeed: number;
+  size?: number; // Optional for now
+  orbitRadius?: number; // Optional for now
+  orbitSpeed?: number; // Optional for now
   rotationSpeed: number;
-  realOrbitRadius: number; // in million km
-  realDiameter: number; // in km
-  orbitalPeriod: number; // in Earth days
-  axialTilt?: number; // in degrees
-  eccentricity: number; // orbital eccentricity
-  color?: string; // planet color for glow effects
+  realOrbitRadius: number;
+  realDiameter: number;
+  orbitalPeriod?: number; // Optional for now
+  axialTilt?: number;
+  eccentricity?: number; // Optional for now
+  color?: string;
   moons?: MoonData[];
 }
 
-// Constants for scale conversion - adjusted for better visualization while maintaining relative accuracy
-const SIZE_SCALE_FACTOR = 0.000035; // 1 km = 0.000035 scene units (slightly larger for better visibility)
-const DISTANCE_SCALE_FACTOR = 0.025; // 1 million km = 0.025 scene units (adjusted to maintain relative distances)
-const TIME_SCALE_FACTOR = 0.005; // Days to animation speed conversion
+// Constants for scale conversion
+const SIZE_SCALE_FACTOR = 0.000035;
+const AU_TO_SCENE_SCALE = 50;
 
-// Scale functions with minimum sizes to ensure visibility
+// Scale functions
 const scaleSize = (realSizeKm: number) => Math.max(0.35, realSizeKm * SIZE_SCALE_FACTOR);
-const scaleDistance = (realDistanceMKm: number) => realDistanceMKm * DISTANCE_SCALE_FACTOR;
-const scaleSpeed = (orbitalPeriodDays: number) => (orbitalPeriodDays ? 2 * Math.PI / (orbitalPeriodDays * TIME_SCALE_FACTOR) : 0);
 const scaleRotation = (rotationPeriodHours: number) => rotationPeriodHours ? 0.005 / rotationPeriodHours : 0;
 
-// Exporting planetData
+// Temporarily re-add scaleDistance and scaleSpeed for moons BEFORE planetData definition
+const scaleDistance = (realDistanceMKm: number) => realDistanceMKm * 0.025; // Old factor for moon orbits for now
+const scaleSpeed = (orbitalPeriodDays: number) => (orbitalPeriodDays ? 2 * Math.PI / (orbitalPeriodDays * 0.005) : 0); // Old factor for moon orbits for now
+
+// Exporting planetData (Now matches the optional fields in PlanetData interface)
 export const planetData: PlanetData[] = [
   {
     name: 'Sun',
     texture: '/textures/sun.jpg',
-    size: scaleSize(1392000), // Diameter in km
-    orbitRadius: 0,
-    orbitSpeed: 0,
-    rotationSpeed: scaleRotation(609.6), // Rotation period in hours
+    rotationSpeed: scaleRotation(609.6),
     realOrbitRadius: 0,
     realDiameter: 1392000,
-    orbitalPeriod: 0,
-    eccentricity: 0, // Sun doesn't orbit
-    color: '#FDB813', // Warm yellow-orange for the Sun
+    axialTilt: 7.25,
+    color: '#FDB813',
   },
   {
     name: 'Mercury',
     texture: '/textures/mercury.jpg',
-    size: scaleSize(4879),
-    orbitRadius: scaleDistance(57.9),
-    orbitSpeed: scaleSpeed(88),
-    rotationSpeed: scaleRotation(1407.6), // 58.65 days
+    rotationSpeed: scaleRotation(1407.6),
     realOrbitRadius: 57.9,
     realDiameter: 4879,
-    orbitalPeriod: 88,
     axialTilt: 0.034,
-    eccentricity: 0.2056,
-    color: '#9F9F9F', // Gray
+    color: '#9F9F9F',
   },
   {
     name: 'Venus',
     texture: '/textures/venus.jpg',
-    size: scaleSize(12104),
-    orbitRadius: scaleDistance(108.2),
-    orbitSpeed: scaleSpeed(224.7),
-    rotationSpeed: scaleRotation(-5832), // Retrograde rotation
+    rotationSpeed: scaleRotation(-5832),
     realOrbitRadius: 108.2,
     realDiameter: 12104,
-    orbitalPeriod: 224.7,
     axialTilt: 177.4,
-    eccentricity: 0.0067,
-    color: '#E6E6B8', // Pale yellow
+    color: '#E6E6B8',
   },
   {
     name: 'Earth',
     texture: '/textures/earth.jpg',
-    size: scaleSize(12756),
-    orbitRadius: scaleDistance(149.6),
-    orbitSpeed: scaleSpeed(365.2),
     rotationSpeed: scaleRotation(24),
     realOrbitRadius: 149.6,
     realDiameter: 12756,
-    orbitalPeriod: 365.2,
     axialTilt: 23.4,
-    eccentricity: 0.0167,
-    color: '#2E5F98', // Blue
+    color: '#2E5F98',
     moons: [
       {
         name: 'Moon',
@@ -112,7 +95,7 @@ export const planetData: PlanetData[] = [
         size: scaleSize(3475),
         orbitRadius: scaleDistance(0.384),
         orbitSpeed: scaleSpeed(27.3),
-        rotationSpeed: scaleRotation(655.2), // Tidally locked to Earth
+        rotationSpeed: scaleRotation(655.2),
         realOrbitRadius: 0.384,
         realDiameter: 3475,
         orbitalPeriod: 27.3,
@@ -122,16 +105,11 @@ export const planetData: PlanetData[] = [
   {
     name: 'Mars',
     texture: '/textures/mars.jpg',
-    size: scaleSize(6792),
-    orbitRadius: scaleDistance(227.9),
-    orbitSpeed: scaleSpeed(687),
     rotationSpeed: scaleRotation(24.7),
     realOrbitRadius: 227.9,
     realDiameter: 6792,
-    orbitalPeriod: 687,
     axialTilt: 25.2,
-    eccentricity: 0.0935,
-    color: '#E67A45', // Reddish-orange
+    color: '#E67A45',
     moons: [
       {
         name: 'Phobos',
@@ -139,7 +117,7 @@ export const planetData: PlanetData[] = [
         size: scaleSize(22.2),
         orbitRadius: scaleDistance(0.0094),
         orbitSpeed: scaleSpeed(0.3189),
-        rotationSpeed: scaleRotation(7.66), // Tidally locked to Mars
+        rotationSpeed: scaleRotation(7.66),
         realOrbitRadius: 0.0094,
         realDiameter: 22.2,
         orbitalPeriod: 0.3189,
@@ -150,7 +128,7 @@ export const planetData: PlanetData[] = [
         size: scaleSize(12.6),
         orbitRadius: scaleDistance(0.0235),
         orbitSpeed: scaleSpeed(1.263),
-        rotationSpeed: scaleRotation(30.3), // Tidally locked to Mars
+        rotationSpeed: scaleRotation(30.3),
         realOrbitRadius: 0.0235,
         realDiameter: 12.6,
         orbitalPeriod: 1.263,
@@ -160,71 +138,51 @@ export const planetData: PlanetData[] = [
   {
     name: 'Jupiter',
     texture: '/textures/jupiter.jpg',
-    size: scaleSize(142984),
-    orbitRadius: scaleDistance(778.6),
-    orbitSpeed: scaleSpeed(4333),
     rotationSpeed: scaleRotation(9.9),
     realOrbitRadius: 778.6,
     realDiameter: 142984,
-    orbitalPeriod: 4333,
     axialTilt: 3.1,
-    eccentricity: 0.0489,
-    color: '#B3A06D', // Beige
+    color: '#B3A06D',
   },
   {
     name: 'Saturn',
     texture: '/textures/saturn.jpg',
-    size: scaleSize(120536),
-    orbitRadius: scaleDistance(1433.5),
-    orbitSpeed: scaleSpeed(10759),
     rotationSpeed: scaleRotation(10.7),
     realOrbitRadius: 1433.5,
     realDiameter: 120536,
-    orbitalPeriod: 10759,
     axialTilt: 26.7,
-    eccentricity: 0.0565,
-    color: '#EACE87', // Pale gold
+    color: '#EACE87',
   },
   {
     name: 'Uranus',
     texture: '/textures/uranus.jpg',
-    size: scaleSize(51118),
-    orbitRadius: scaleDistance(2872.5),
-    orbitSpeed: scaleSpeed(30687),
-    rotationSpeed: scaleRotation(-17.2), // Retrograde rotation
+    rotationSpeed: scaleRotation(-17.2),
     realOrbitRadius: 2872.5,
     realDiameter: 51118,
-    orbitalPeriod: 30687,
     axialTilt: 97.8,
-    eccentricity: 0.0457,
-    color: '#D1E7E7', // Pale cyan
+    color: '#D1E7E7',
   },
   {
     name: 'Neptune',
     texture: '/textures/neptune.jpg',
-    size: scaleSize(49528),
-    orbitRadius: scaleDistance(4495.1),
-    orbitSpeed: scaleSpeed(60190),
     rotationSpeed: scaleRotation(16.1),
     realOrbitRadius: 4495.1,
     realDiameter: 49528,
-    orbitalPeriod: 60190,
     axialTilt: 28.3,
-    eccentricity: 0.0113,
-    color: '#3E66F9', // Deep blue
+    color: '#3E66F9',
   },
 ];
 
-// Accept time scale from parent component
+// Accept currentDate from parent component
 interface PlanetsProps {
-  timeScale: number;
+  currentDate: Date;
 }
 
-const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
+const Planets: React.FC<PlanetsProps> = ({ currentDate }) => {
   const { setSelectedPlanet, setPlanetPosition, selectedPlanet } = usePlanetStore();
 
   // Refs for planets
-  const planetMeshRefs = useRef<Mesh[]>([]);
+  const planetMeshRefs = useRef<(Mesh | null)[]>([]); // Allow null refs initially
   const planetTextures = useLoader(
     TextureLoader,
     planetData.map((planet) => planet.texture)
@@ -242,195 +200,200 @@ const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
   );
 
   // Refs and textures for moons
-  const moonMeshRefs = useRef<Mesh[]>([]);
+  const moonMeshRefs = useRef<(Mesh | null)[]>([]); // Allow null refs initially
   const moonTextures = useLoader(
     TextureLoader,
     moonsData.map((moon) => moon.texture)
   );
 
-  // Function to calculate position based on Kepler's laws
-  const calculateOrbitalPosition = (
-    semiMajorAxis: number,
-    eccentricity: number,
-    angle: number
-  ): [number, number] => {
-    // Ellipse formula in polar form
-    const distance = semiMajorAxis * (1 - eccentricity * eccentricity) / 
-                    (1 + eccentricity * Math.cos(angle));
-    
-    // Position in the orbital plane
-    const x = Math.cos(angle) * distance;
-    const z = Math.sin(angle) * distance;
-    
-    return [x, z];
+  // Ring ref for Saturn
+  const ringRef = useRef<Mesh>(null);
+
+  // Simplified calculateOrbitalPosition for moons (relative to parent) - KEEP for moons for now
+  const calculateMoonPosition = (
+    orbitRadius: number,
+    orbitSpeed: number,
+    elapsedTime: number
+  ): [number, number, number] => {
+    const angle = elapsedTime * orbitSpeed * 0.1; // Apply a factor if needed
+    const x = Math.cos(angle) * orbitRadius;
+    const z = Math.sin(angle) * orbitRadius;
+    return [x, 0, z]; // Assume moons orbit in the same plane as planets for now
   };
 
-  useFrame((state) => {
-    const elapsedTime = state.clock.getElapsedTime() * timeScale;
+  useFrame((state, delta) => {
+    const elapsedTime = state.clock.getElapsedTime();
 
-    // Update planets
     planetData.forEach((planet, index) => {
       const mesh = planetMeshRefs.current[index];
-      if (mesh) {
-        // Apply axial tilt if defined
-        if (planet.axialTilt && mesh.rotation.x === 0) {
-          mesh.rotation.x = (planet.axialTilt * Math.PI) / 180;
+      if (!mesh) return;
+
+      if (planet.name !== 'Sun') {
+        try {
+          // Ensure planet name is a valid Astronomy.Body type
+          const bodyName = planet.name as keyof typeof Astronomy.Body;
+          if (!(bodyName in Astronomy.Body)) {
+            console.warn(`Invalid body name for Astronomy Engine: ${planet.name}`);
+            return; // Skip this planet if name is invalid
+          }
+
+          const helioVector = Astronomy.HelioVector(Astronomy.Body[bodyName], currentDate);
+
+          const positionX = helioVector.x * AU_TO_SCENE_SCALE;
+          const positionY = helioVector.z * AU_TO_SCENE_SCALE;
+          const positionZ = helioVector.y * AU_TO_SCENE_SCALE;
+
+          mesh.position.set(positionX, positionY, positionZ);
+
+          // Update store with position as an array [x, y, z]
+           setPlanetPosition(planet.name, [positionX, positionY, positionZ]);
+
+        } catch (error) {
+          console.error(`Error calculating position for ${planet.name}:`, error);
         }
+      }
 
-        // Rotate celestial body on its axis
-        mesh.rotation.y += planet.rotationSpeed * timeScale;
+      // --- Rotation ---
+      mesh.rotation.y += (planet.rotationSpeed || 0) * delta * 50;
 
-        if (planet.name !== 'Sun') {
-          const speed = planet.orbitSpeed;
-          const angle = elapsedTime * speed;
-          
-          // Calculate position using Kepler's laws
-          const [x, z] = calculateOrbitalPosition(
-            planet.orbitRadius,
-            planet.eccentricity,
-            angle
+      // Apply axial tilt - Placeholder for complex rotation logic
+      // if (planet.axialTilt !== undefined) {
+      //   // Requires Quaternion logic for correct application relative to orbit
+      // }
+
+      // --- Handle Saturn's Rings ---
+      if (planet.name === 'Saturn' && ringRef.current) {
+        ringRef.current.position.copy(mesh.position);
+        // Simple tilt for now - ideally align with planet's true tilt
+        ringRef.current.rotation.x = Math.PI / 2 + (planet.axialTilt || 0) * (Math.PI / 180);
+        // Let rings spin with planet for now
+        ringRef.current.rotation.y = mesh.rotation.y;
+      }
+
+      // --- Handle Moons (using old simplified logic) ---
+      if (planet.moons) {
+        planet.moons.forEach((moon) => {
+          const moonIndex = moonsData.findIndex(m => m.name === moon.name && m.parentIndex === index);
+          const moonMesh = moonMeshRefs.current[moonIndex];
+          if (!moonMesh || !moon.orbitRadius || !moon.orbitSpeed || !moon.rotationSpeed) return; // Check moon data
+
+          const [moonX, moonY, moonZ] = calculateMoonPosition(
+            moon.orbitRadius,
+            moon.orbitSpeed,
+            elapsedTime
           );
 
-          mesh.position.x = x;
-          mesh.position.z = z;
-        }
+          moonMesh.position.set(
+            mesh.position.x + moonX,
+            mesh.position.y + moonY,
+            mesh.position.z + moonZ
+          );
 
-        // Update the planet's position in the store
-        setPlanetPosition(planet.name, [
-          mesh.position.x,
-          mesh.position.y,
-          mesh.position.z,
-        ]);
-      }
-    });
-
-    // Update moons with more physically accurate orbits
-    moonsData.forEach((moon, index) => {
-      const moonMesh = moonMeshRefs.current[index];
-      const parentMesh = planetMeshRefs.current[moon.parentIndex!];
-
-      if (moonMesh && parentMesh) {
-        const angle = elapsedTime * moon.orbitSpeed;
-        
-        // Calculate moon's position relative to its parent
-        const moonOrbitRadius = moon.orbitRadius;
-        
-        // Moons typically have low eccentricity, but we could add actual values for more accuracy
-        const moonEccentricity = 0.05;
-        
-        // Calculate orbital position
-        const [relativeX, relativeZ] = calculateOrbitalPosition(
-          moonOrbitRadius,
-          moonEccentricity,
-          angle
-        );
-
-        // Position relative to parent planet
-        moonMesh.position.x = parentMesh.position.x + relativeX;
-        moonMesh.position.z = parentMesh.position.z + relativeZ;
-        moonMesh.position.y = parentMesh.position.y;
-
-        // Rotate moon on its axis (many moons are tidally locked)
-        moonMesh.rotation.y += moon.rotationSpeed * timeScale;
-
-        // Update moon positions in the store
-        setPlanetPosition(moon.name, [
-          moonMesh.position.x,
-          moonMesh.position.y,
-          moonMesh.position.z,
-        ]);
+          moonMesh.rotation.y += moon.rotationSpeed * delta * 50;
+        });
       }
     });
   });
 
+  // Calculate planet size dynamically
+  const getPlanetSize = (planetName: string): number => {
+    const data = planetData.find(p => p.name === planetName);
+    return data ? scaleSize(data.realDiameter) : 1; // Default size if not found
+  };
+
   return (
     <>
-      {/* Render Planets */}
-      {planetData.map((planet, index) => (
-        <group key={planet.name}>
-          {planet.name !== 'Sun' && (
-            <Orbit 
-              radius={planet.orbitRadius} 
-              eccentricity={planet.eccentricity}
-              rotationAngle={0}
-              color={planet.name === selectedPlanet ? "#64b5f6" : "white"}
-            />
-          )}
-          <mesh
-            ref={(el) => (planetMeshRefs.current[index] = el!)}
-            onClick={() => setSelectedPlanet(planet.name)}
-            position={planet.name === 'Sun' ? [0, 0, 0] : undefined}
-          >
-            <sphereGeometry args={[planet.size, 32, 32]} />
-            <meshStandardMaterial
-              map={planetTextures[index]}
-              emissive={planet.name === 'Sun' ? planet.color || 'yellow' : planet.color || undefined}
-              emissiveIntensity={planet.name === 'Sun' ? 2 : planet.name === selectedPlanet ? 0.5 : 0.2}
-              metalness={0.1}
-              roughness={0.7}
-            />
-          </mesh>
+      {planetData.map((planet, index) => {
+         const planetSize = getPlanetSize(planet.name);
+        return (
+          <React.Fragment key={planet.name}>
+            <mesh
+              ref={(el) => (planetMeshRefs.current[index] = el)}
+              onClick={() => setSelectedPlanet(planet.name)}
+              position={[planet.realOrbitRadius * AU_TO_SCENE_SCALE, 0, 0]} // Initial placeholder position (will be updated by useFrame)
+            >
+              <sphereGeometry args={[planetSize, 32, 32]} />
+              <meshStandardMaterial
+                map={planetTextures[index]}
+                metalness={0.4}
+                roughness={0.7}
+                emissive={planet.name === 'Sun' ? new Color(planet.color || '#FFFFFF') : new Color(0x000000)}
+                emissiveIntensity={planet.name === 'Sun' ? 1.5 : 0}
+              />
+               {/* Glow effect for selected planet */}
+              {selectedPlanet === planet.name && planet.name !== 'Sun' && (
+                 <mesh>
+                   <sphereGeometry args={[planetSize * 1.2, 32, 32]} />
+                   <meshStandardMaterial
+                     color={new Color(planet.color || '#FFFFFF').multiplyScalar(1.5)}
+                     transparent
+                     opacity={0.3}
+                     side={DoubleSide}
+                     depthWrite={false}
+                     emissive={new Color(planet.color || '#FFFFFF')}
+                     emissiveIntensity={0.8}
+                   />
+                 </mesh>
+              )}
+               {/* Sun's constant glow */}
+              {planet.name === 'Sun' && (
+                 <mesh>
+                   <sphereGeometry args={[planetSize * 1.1, 48, 48]} />
+                   <meshStandardMaterial
+                     color={new Color(planet.color || '#FFFFFF')}
+                     transparent
+                     opacity={0.25}
+                     side={DoubleSide}
+                     depthWrite={false}
+                      emissive={new Color(planet.color || '#FFFFFF')}
+                     emissiveIntensity={1} // Adjust intensity for desired glow
+                   />
+                 </mesh>
+              )}
+            </mesh>
+            {/* Render orbit line using realOrbitRadius for visual reference */}
+             {planet.name !== 'Sun' && <Orbit radius={planet.realOrbitRadius * AU_TO_SCENE_SCALE} />}
+          </React.Fragment>
+        );
+      })}
 
-          {/* Add Rings to Saturn */}
-          {planet.name === 'Saturn' && (
-            <mesh rotation={[-Math.PI / 2 + ((planet.axialTilt || 0) * Math.PI) / 180, 0, 0]}>
-              <ringGeometry args={[planet.size * 1.4, planet.size * 2.2, 64]} />
-              <meshStandardMaterial
-                map={ringTexture}
-                side={DoubleSide}
-                transparent={true}
-                opacity={0.8}
-                emissive={planet.color}
-                emissiveIntensity={0.1}
-              />
-            </mesh>
-          )}
-          
-          {/* Add Rings to Uranus (fainter than Saturn's) */}
-          {planet.name === 'Uranus' && (
-            <mesh rotation={[-Math.PI / 2 + ((planet.axialTilt || 0) * Math.PI) / 180, 0, 0]}>
-              <ringGeometry args={[planet.size * 1.3, planet.size * 1.8, 64]} />
-              <meshStandardMaterial
-                color="#d3d3d3"
-                side={DoubleSide}
-                transparent={true}
-                opacity={0.4}
-                emissive={planet.color}
-                emissiveIntensity={0.1}
-              />
-            </mesh>
-          )}
-          
-          {/* Add Rings to Neptune (very faint) */}
-          {planet.name === 'Neptune' && (
-            <mesh rotation={[-Math.PI / 2 + ((planet.axialTilt || 0) * Math.PI) / 180, 0, 0]}>
-              <ringGeometry args={[planet.size * 1.5, planet.size * 1.7, 64]} />
-              <meshStandardMaterial
-                color="#a0a0ff"
-                side={DoubleSide}
-                transparent={true}
-                opacity={0.3}
-                emissive={planet.color}
-                emissiveIntensity={0.1}
-              />
-            </mesh>
-          )}
-        </group>
-      ))}
+      {/* Saturn's Rings */}
+      <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[getPlanetSize('Saturn') * 1.3, getPlanetSize('Saturn') * 2.2, 64]} />
+        <meshStandardMaterial
+          map={ringTexture}
+          side={DoubleSide}
+          transparent={true}
+          opacity={0.8}
+          alphaTest={0.5} // Adjust alphaTest for better transparency handling
+        />
+      </mesh>
 
       {/* Render Moons */}
       {moonsData.map((moon, index) => (
         <mesh
-          key={moon.name}
-          ref={(el) => (moonMeshRefs.current[index] = el!)}
-          onClick={() => setSelectedPlanet(moon.name)}
+          key={`${moon.parentIndex}-${moon.name}`}
+          ref={(el) => (moonMeshRefs.current[index] = el)}
+           onClick={(e) => { e.stopPropagation(); setSelectedPlanet(moon.name); }} // Select moon on click
+          // Initial position will be updated by useFrame relative to parent
         >
           <sphereGeometry args={[moon.size, 16, 16]} />
-          <meshStandardMaterial 
-            map={moonTextures[index]} 
-            emissive="#404040"
-            emissiveIntensity={moon.name === selectedPlanet ? 0.5 : 0.1}
-          />
+          <meshStandardMaterial map={moonTextures[index]} metalness={0.2} roughness={0.8}/>
+            {/* Glow effect for selected moon */}
+           {selectedPlanet === moon.name && (
+             <mesh>
+               <sphereGeometry args={[moon.size * 1.3, 16, 16]} />
+               <meshStandardMaterial
+                 color={new Color('#CCCCCC')} // Generic glow for moons
+                 transparent
+                 opacity={0.4}
+                 side={DoubleSide}
+                 depthWrite={false}
+                 emissive={new Color('#FFFFFF')}
+                 emissiveIntensity={0.5}
+               />
+             </mesh>
+           )}
         </mesh>
       ))}
     </>

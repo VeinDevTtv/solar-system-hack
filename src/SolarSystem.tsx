@@ -83,8 +83,26 @@ const CameraController = () => {
   return null;
 };
 
+// Constants for time calculation
+const SIMULATION_START_DATE = new Date(); // Start simulation from now
+const SECONDS_PER_DAY = 86400;
+const SIMULATION_SPEED_MULTIPLIER = 5 * SECONDS_PER_DAY; // timeScale=1 means 5 days pass per second
+
 const SolarSystem: React.FC = () => {
   const [timeScale, setTimeScale] = useState(1);
+  const [currentDate, setCurrentDate] = useState(SIMULATION_START_DATE);
+  const accumulatedSimTimeSeconds = useRef(0);
+
+  // Update current simulation date based on timeScale and frame delta
+  useFrame((state, delta) => {
+    // Calculate how much simulation time has passed this frame
+    const simSecondsElapsed = delta * timeScale * SIMULATION_SPEED_MULTIPLIER;
+    accumulatedSimTimeSeconds.current += simSecondsElapsed;
+
+    // Calculate the new date
+    const newSimDate = new Date(SIMULATION_START_DATE.getTime() + accumulatedSimTimeSeconds.current * 1000);
+    setCurrentDate(newSimDate);
+  });
 
   // Listen for keyboard shortcuts to adjust time scale
   useEffect(() => {
@@ -125,7 +143,7 @@ const SolarSystem: React.FC = () => {
         fade 
       />
       
-      <Planets timeScale={timeScale} />
+      <Planets currentDate={currentDate} />
       
       <EffectComposer>
         <Bloom 
