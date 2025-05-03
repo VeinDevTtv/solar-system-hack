@@ -33,6 +33,7 @@ interface PlanetData {
   realDiameter: number; // in km
   orbitalPeriod: number; // in Earth days
   axialTilt?: number; // in degrees
+  eccentricity: number; // orbital eccentricity
   moons?: MoonData[];
 }
 
@@ -59,6 +60,7 @@ export const planetData: PlanetData[] = [
     realOrbitRadius: 0,
     realDiameter: 1392000,
     orbitalPeriod: 0,
+    eccentricity: 0, // Sun doesn't orbit
   },
   {
     name: 'Mercury',
@@ -71,6 +73,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 4879,
     orbitalPeriod: 88,
     axialTilt: 0.034,
+    eccentricity: 0.2056,
   },
   {
     name: 'Venus',
@@ -83,6 +86,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 12104,
     orbitalPeriod: 224.7,
     axialTilt: 177.4,
+    eccentricity: 0.0067,
   },
   {
     name: 'Earth',
@@ -95,6 +99,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 12756,
     orbitalPeriod: 365.2,
     axialTilt: 23.4,
+    eccentricity: 0.0167,
     moons: [
       {
         name: 'Moon',
@@ -120,6 +125,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 6792,
     orbitalPeriod: 687,
     axialTilt: 25.2,
+    eccentricity: 0.0935,
     moons: [
       {
         name: 'Phobos',
@@ -156,6 +162,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 142984,
     orbitalPeriod: 4333,
     axialTilt: 3.1,
+    eccentricity: 0.0489,
   },
   {
     name: 'Saturn',
@@ -168,6 +175,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 120536,
     orbitalPeriod: 10759,
     axialTilt: 26.7,
+    eccentricity: 0.0565,
   },
   {
     name: 'Uranus',
@@ -180,6 +188,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 51118,
     orbitalPeriod: 30687,
     axialTilt: 97.8,
+    eccentricity: 0.0457,
   },
   {
     name: 'Neptune',
@@ -192,6 +201,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 49528,
     orbitalPeriod: 60190,
     axialTilt: 28.3,
+    eccentricity: 0.0113,
   },
 ];
 
@@ -201,7 +211,7 @@ interface PlanetsProps {
 }
 
 const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
-  const { setSelectedPlanet, setPlanetPosition } = usePlanetStore();
+  const { setSelectedPlanet, setPlanetPosition, selectedPlanet } = usePlanetStore();
 
   // Refs for planets
   const planetMeshRefs = useRef<Mesh[]>([]);
@@ -247,9 +257,15 @@ const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
           const orbitRadius = planet.orbitRadius;
           const speed = planet.orbitSpeed;
           const angle = elapsedTime * speed;
+          const eccentricity = planet.eccentricity;
 
-          mesh.position.x = Math.cos(angle) * orbitRadius;
-          mesh.position.z = Math.sin(angle) * orbitRadius;
+          // Kepler's equation for elliptical orbits
+          // r = a(1-e²)/(1+e·cos(θ)) where a is semi-major axis, e is eccentricity
+          const distance = orbitRadius * (1 - eccentricity * eccentricity) / 
+                          (1 + eccentricity * Math.cos(angle));
+
+          mesh.position.x = Math.cos(angle) * distance;
+          mesh.position.z = Math.sin(angle) * distance;
         }
 
         // Update the planet's position in the store
@@ -293,7 +309,14 @@ const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
       {/* Render Planets */}
       {planetData.map((planet, index) => (
         <group key={planet.name}>
-          {planet.name !== 'Sun' && <Orbit radius={planet.orbitRadius} />}
+          {planet.name !== 'Sun' && (
+            <Orbit 
+              radius={planet.orbitRadius} 
+              eccentricity={planet.eccentricity}
+              rotationAngle={0}
+              color={planet.name === selectedPlanet ? "#64b5f6" : "white"}
+            />
+          )}
           <mesh
             ref={(el) => (planetMeshRefs.current[index] = el!)}
             onClick={() => setSelectedPlanet(planet.name)}
