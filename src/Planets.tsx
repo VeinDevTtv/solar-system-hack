@@ -5,7 +5,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
-import { TextureLoader, Mesh, DoubleSide } from 'three';
+import { TextureLoader, Mesh, DoubleSide, Color } from 'three';
 import { usePlanetStore } from './store';
 import Orbit from './Orbit';
 
@@ -34,16 +34,17 @@ interface PlanetData {
   orbitalPeriod: number; // in Earth days
   axialTilt?: number; // in degrees
   eccentricity: number; // orbital eccentricity
+  color?: string; // planet color for glow effects
   moons?: MoonData[];
 }
 
-// Constants for scale conversion
-const SIZE_SCALE_FACTOR = 0.00003; // 1 km = 0.00003 scene units
-const DISTANCE_SCALE_FACTOR = 0.03; // 1 million km = 0.03 scene units
+// Constants for scale conversion - adjusted for better visualization while maintaining relative accuracy
+const SIZE_SCALE_FACTOR = 0.000035; // 1 km = 0.000035 scene units (slightly larger for better visibility)
+const DISTANCE_SCALE_FACTOR = 0.025; // 1 million km = 0.025 scene units (adjusted to maintain relative distances)
 const TIME_SCALE_FACTOR = 0.005; // Days to animation speed conversion
 
-// Apply scale conversions to make visualization possible
-const scaleSize = (realSizeKm: number) => Math.max(0.3, realSizeKm * SIZE_SCALE_FACTOR);
+// Scale functions with minimum sizes to ensure visibility
+const scaleSize = (realSizeKm: number) => Math.max(0.35, realSizeKm * SIZE_SCALE_FACTOR);
 const scaleDistance = (realDistanceMKm: number) => realDistanceMKm * DISTANCE_SCALE_FACTOR;
 const scaleSpeed = (orbitalPeriodDays: number) => (orbitalPeriodDays ? 2 * Math.PI / (orbitalPeriodDays * TIME_SCALE_FACTOR) : 0);
 const scaleRotation = (rotationPeriodHours: number) => rotationPeriodHours ? 0.005 / rotationPeriodHours : 0;
@@ -61,6 +62,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 1392000,
     orbitalPeriod: 0,
     eccentricity: 0, // Sun doesn't orbit
+    color: '#FDB813', // Warm yellow-orange for the Sun
   },
   {
     name: 'Mercury',
@@ -74,6 +76,7 @@ export const planetData: PlanetData[] = [
     orbitalPeriod: 88,
     axialTilt: 0.034,
     eccentricity: 0.2056,
+    color: '#9F9F9F', // Gray
   },
   {
     name: 'Venus',
@@ -87,6 +90,7 @@ export const planetData: PlanetData[] = [
     orbitalPeriod: 224.7,
     axialTilt: 177.4,
     eccentricity: 0.0067,
+    color: '#E6E6B8', // Pale yellow
   },
   {
     name: 'Earth',
@@ -100,6 +104,7 @@ export const planetData: PlanetData[] = [
     orbitalPeriod: 365.2,
     axialTilt: 23.4,
     eccentricity: 0.0167,
+    color: '#2E5F98', // Blue
     moons: [
       {
         name: 'Moon',
@@ -126,6 +131,7 @@ export const planetData: PlanetData[] = [
     orbitalPeriod: 687,
     axialTilt: 25.2,
     eccentricity: 0.0935,
+    color: '#E67A45', // Reddish-orange
     moons: [
       {
         name: 'Phobos',
@@ -163,6 +169,7 @@ export const planetData: PlanetData[] = [
     orbitalPeriod: 4333,
     axialTilt: 3.1,
     eccentricity: 0.0489,
+    color: '#B3A06D', // Beige
   },
   {
     name: 'Saturn',
@@ -176,6 +183,7 @@ export const planetData: PlanetData[] = [
     orbitalPeriod: 10759,
     axialTilt: 26.7,
     eccentricity: 0.0565,
+    color: '#EACE87', // Pale gold
   },
   {
     name: 'Uranus',
@@ -189,6 +197,7 @@ export const planetData: PlanetData[] = [
     orbitalPeriod: 30687,
     axialTilt: 97.8,
     eccentricity: 0.0457,
+    color: '#D1E7E7', // Pale cyan
   },
   {
     name: 'Neptune',
@@ -202,6 +211,7 @@ export const planetData: PlanetData[] = [
     orbitalPeriod: 60190,
     axialTilt: 28.3,
     eccentricity: 0.0113,
+    color: '#3E66F9', // Deep blue
   },
 ];
 
@@ -238,6 +248,23 @@ const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
     moonsData.map((moon) => moon.texture)
   );
 
+  // Function to calculate position based on Kepler's laws
+  const calculateOrbitalPosition = (
+    semiMajorAxis: number,
+    eccentricity: number,
+    angle: number
+  ): [number, number] => {
+    // Ellipse formula in polar form
+    const distance = semiMajorAxis * (1 - eccentricity * eccentricity) / 
+                    (1 + eccentricity * Math.cos(angle));
+    
+    // Position in the orbital plane
+    const x = Math.cos(angle) * distance;
+    const z = Math.sin(angle) * distance;
+    
+    return [x, z];
+  };
+
   useFrame((state) => {
     const elapsedTime = state.clock.getElapsedTime() * timeScale;
 
@@ -254,18 +281,18 @@ const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
         mesh.rotation.y += planet.rotationSpeed * timeScale;
 
         if (planet.name !== 'Sun') {
-          const orbitRadius = planet.orbitRadius;
           const speed = planet.orbitSpeed;
           const angle = elapsedTime * speed;
-          const eccentricity = planet.eccentricity;
+          
+          // Calculate position using Kepler's laws
+          const [x, z] = calculateOrbitalPosition(
+            planet.orbitRadius,
+            planet.eccentricity,
+            angle
+          );
 
-          // Kepler's equation for elliptical orbits
-          // r = a(1-e²)/(1+e·cos(θ)) where a is semi-major axis, e is eccentricity
-          const distance = orbitRadius * (1 - eccentricity * eccentricity) / 
-                          (1 + eccentricity * Math.cos(angle));
-
-          mesh.position.x = Math.cos(angle) * distance;
-          mesh.position.z = Math.sin(angle) * distance;
+          mesh.position.x = x;
+          mesh.position.z = z;
         }
 
         // Update the planet's position in the store
@@ -277,18 +304,30 @@ const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
       }
     });
 
-    // Update moons
+    // Update moons with more physically accurate orbits
     moonsData.forEach((moon, index) => {
       const moonMesh = moonMeshRefs.current[index];
       const parentMesh = planetMeshRefs.current[moon.parentIndex!];
 
       if (moonMesh && parentMesh) {
         const angle = elapsedTime * moon.orbitSpeed;
+        
+        // Calculate moon's position relative to its parent
+        const moonOrbitRadius = moon.orbitRadius;
+        
+        // Moons typically have low eccentricity, but we could add actual values for more accuracy
+        const moonEccentricity = 0.05;
+        
+        // Calculate orbital position
+        const [relativeX, relativeZ] = calculateOrbitalPosition(
+          moonOrbitRadius,
+          moonEccentricity,
+          angle
+        );
 
-        moonMesh.position.x =
-          parentMesh.position.x + Math.cos(angle) * moon.orbitRadius;
-        moonMesh.position.z =
-          parentMesh.position.z + Math.sin(angle) * moon.orbitRadius;
+        // Position relative to parent planet
+        moonMesh.position.x = parentMesh.position.x + relativeX;
+        moonMesh.position.z = parentMesh.position.z + relativeZ;
         moonMesh.position.y = parentMesh.position.y;
 
         // Rotate moon on its axis (many moons are tidally locked)
@@ -325,8 +364,10 @@ const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
             <sphereGeometry args={[planet.size, 32, 32]} />
             <meshStandardMaterial
               map={planetTextures[index]}
-              emissive={planet.name === 'Sun' ? 'yellow' : undefined}
-              emissiveIntensity={planet.name === 'Sun' ? 1 : undefined}
+              emissive={planet.name === 'Sun' ? planet.color || 'yellow' : planet.color || undefined}
+              emissiveIntensity={planet.name === 'Sun' ? 2 : planet.name === selectedPlanet ? 0.5 : 0.2}
+              metalness={0.1}
+              roughness={0.7}
             />
           </mesh>
 
@@ -339,6 +380,8 @@ const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
                 side={DoubleSide}
                 transparent={true}
                 opacity={0.8}
+                emissive={planet.color}
+                emissiveIntensity={0.1}
               />
             </mesh>
           )}
@@ -352,6 +395,23 @@ const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
                 side={DoubleSide}
                 transparent={true}
                 opacity={0.4}
+                emissive={planet.color}
+                emissiveIntensity={0.1}
+              />
+            </mesh>
+          )}
+          
+          {/* Add Rings to Neptune (very faint) */}
+          {planet.name === 'Neptune' && (
+            <mesh rotation={[-Math.PI / 2 + ((planet.axialTilt || 0) * Math.PI) / 180, 0, 0]}>
+              <ringGeometry args={[planet.size * 1.5, planet.size * 1.7, 64]} />
+              <meshStandardMaterial
+                color="#a0a0ff"
+                side={DoubleSide}
+                transparent={true}
+                opacity={0.3}
+                emissive={planet.color}
+                emissiveIntensity={0.1}
               />
             </mesh>
           )}
@@ -366,7 +426,11 @@ const Planets: React.FC<PlanetsProps> = ({ timeScale }) => {
           onClick={() => setSelectedPlanet(moon.name)}
         >
           <sphereGeometry args={[moon.size, 16, 16]} />
-          <meshStandardMaterial map={moonTextures[index]} />
+          <meshStandardMaterial 
+            map={moonTextures[index]} 
+            emissive="#404040"
+            emissiveIntensity={moon.name === selectedPlanet ? 0.5 : 0.1}
+          />
         </mesh>
       ))}
     </>
