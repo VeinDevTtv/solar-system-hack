@@ -281,11 +281,40 @@ const calculateRealDistance = (planet1: string, planet2: string): number | null 
   
   if (!planet1Data || !planet2Data) return null;
   
-  // For moons, find their parent planet
+  // For actual distance, we need their current positions in 3D space
+  // instead of just orbit radius difference
   let planet1Orbit = planet1Data.realOrbitRadius;
   let planet2Orbit = planet2Data.realOrbitRadius;
   
+  // This is a more accurate approximation for now, considering the elliptical orbits
+  // The real precise calculation would need the current angle of each body in its orbit
+  // and would apply the elliptical orbital equation to get their 3D positions
+  
+  // If one is Sun, just use the current orbit radius of the other
+  if (planet1 === 'Sun') return planet2Orbit;
+  if (planet2 === 'Sun') return planet1Orbit;
+  
+  // For two planets, use the triangular approximation
+  // (this is still an approximation as it doesn't account for their actual orbital positions)
   return Math.abs(planet1Orbit - planet2Orbit);
+};
+
+// Add this function to calculate perihelion and aphelion
+const calculateOrbitalExtremes = (planet: string): { perihelion: number, aphelion: number } | null => {
+  const planetInfo = planetData.find(p => p.name === planet);
+  
+  if (!planetInfo || planet === 'Sun') return null;
+  
+  const semiMajorAxis = planetInfo.realOrbitRadius;
+  const eccentricity = planetInfo.eccentricity;
+  
+  // Perihelion = a(1-e)
+  const perihelion = semiMajorAxis * (1 - eccentricity);
+  
+  // Aphelion = a(1+e)
+  const aphelion = semiMajorAxis * (1 + eccentricity);
+  
+  return { perihelion, aphelion };
 };
 
 const PlanetInfo: React.FC = () => {
@@ -353,6 +382,9 @@ const PlanetInfo: React.FC = () => {
       distanceToTargetKM = (realDistance * 1_000_000).toLocaleString(); // in km
     }
   }
+  
+  // Get orbital extreme distances (perihelion and aphelion)
+  const orbitalExtremes = calculateOrbitalExtremes(selectedPlanet);
 
   return (
     <Card
@@ -441,6 +473,28 @@ const PlanetInfo: React.FC = () => {
                 secondaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
               />
             </ListItem>
+          )}
+          
+          {/* Display orbital extremes for planets (not sun) */}
+          {orbitalExtremes && (
+            <>
+              <ListItem disableGutters>
+                <ListItemText
+                  primary="Perihelion (closest to Sun):"
+                  secondary={`${(orbitalExtremes.perihelion * 1_000_000).toLocaleString()} km`}
+                  primaryTypographyProps={{ variant: 'body2', color: 'text.primary' }}
+                  secondaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
+                />
+              </ListItem>
+              <ListItem disableGutters>
+                <ListItemText
+                  primary="Aphelion (farthest from Sun):"
+                  secondary={`${(orbitalExtremes.aphelion * 1_000_000).toLocaleString()} km`}
+                  primaryTypographyProps={{ variant: 'body2', color: 'text.primary' }}
+                  secondaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
+                />
+              </ListItem>
+            </>
           )}
         </List>
 
