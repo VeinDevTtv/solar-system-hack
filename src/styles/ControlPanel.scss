@@ -62,6 +62,36 @@ $slider-thumb-size: 16px;
     }
   }
   
+  &__advanced-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    margin: 5px 0 15px 0;
+    cursor: pointer;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+    transition: color 0.2s ease;
+    
+    svg {
+      width: 18px;
+      height: 18px;
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+    }
+    
+    &:hover {
+      color: $text-color;
+      
+      svg {
+        opacity: 1;
+      }
+    }
+  }
+  
   &__collapsed {
     position: absolute;
     bottom: 30px;

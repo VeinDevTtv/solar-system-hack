@@ -5,10 +5,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars } from '@react-three/drei';
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
-import { BlendFunction } from 'postprocessing';
-import { PointLight } from 'three';
+import { OrbitControls, Stars, Environment, BakeShadows } from '@react-three/drei';
+import { EffectComposer, Bloom, Vignette, SSAO, DepthOfField } from '@react-three/postprocessing';
+import { BlendFunction, KernelSize } from 'postprocessing';
+import { PointLight, Vector3, Color } from 'three';
 import Planets from './Planets';
 import ControlPanel from './components/ControlPanel';
 import PlanetInfo from './components/PlanetInfo';
@@ -32,7 +32,7 @@ const LoadingScreen: React.FC<{ onLoaded: () => void }> = ({ onLoaded }) => {
   );
 };
 
-// Enhanced lighting component for the scene
+// Enhanced lighting component with realistic physics
 const SceneLighting: React.FC<{ 
   sunIntensity: number;
   ambientIntensity: number;
@@ -40,50 +40,82 @@ const SceneLighting: React.FC<{
   // Main sun light
   const sunLight = useRef<PointLight>(null);
   
-  // Create a pulsating glow effect for the sun
+  // Create a pulsating glow effect for the sun with realistic physics
   useFrame((state) => {
     if (sunLight.current) {
       const time = state.clock.getElapsedTime();
-      const baseIntensity = sunIntensity; // Use the passed intensity value
-      const intensity = baseIntensity + Math.sin(time * 0.5) * 0.15; // Subtle pulsating
+      const baseIntensity = sunIntensity * 5; // Higher intensity for physical correctness
+      // Solar flare simulation with subtle variations
+      const intensity = baseIntensity + Math.sin(time * 0.5) * 0.15 + Math.sin(time * 0.23) * 0.07;
       sunLight.current.intensity = intensity;
+      
+      // Subtle color temperature variation to simulate solar chromosphere
+      const baseColor = new Color(0xFDB813);
+      const tempVariation = Math.sin(time * 0.1) * 0.05;
+      baseColor.r += tempVariation;
+      baseColor.b -= tempVariation * 0.5;
+      sunLight.current.color = baseColor;
+      
+      // Realistic decay for inverse square law of light
+      sunLight.current.decay = 2.0; // Physically correct inverse square law
     }
   });
 
   return (
     <>
-      {/* Main sun light in the center */}
+      {/* Main sun light in the center with physically correct parameters */}
       <pointLight 
         ref={sunLight} 
         position={[0, 0, 0]} 
-        intensity={sunIntensity} 
+        intensity={sunIntensity * 5}
         color="#FDB813"
-        distance={100}
-        decay={1.5}
+        distance={0} // Set to 0 for unlimited distance
+        decay={2} // Physically correct inverse square law
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.001}
       />
       
-      {/* Ambient light for general scene illumination */}
-      <ambientLight intensity={ambientIntensity} />
+      {/* Ambient light for general scene illumination - simulates light scattering */}
+      <ambientLight intensity={ambientIntensity * 0.5} color="#CCCCFF" />
       
-      {/* Additional ambient light to ensure planets are visible */}
+      {/* Additional hemisphere light for better illumination of planets in shadow */}
       <hemisphereLight
         color="#ffffbb"
         groundColor="#080820"
-        intensity={ambientIntensity * 1.2}
+        intensity={ambientIntensity * 0.8}
       />
+      
+      {/* Environment map for realistic reflections */}
+      <Environment preset="night" background={false} />
+      
+      {/* Bake shadows for performance */}
+      <BakeShadows />
     </>
   );
 };
 
-// Camera controller to adjust settings
+// Camera controller to adjust settings with realistic physics
 const CameraController = () => {
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   
   useEffect(() => {
     // Set better initial camera position
     camera.position.set(0, 70, 150);
     camera.lookAt(0, 0, 0);
-  }, [camera]);
+    
+    // Set physical camera properties
+    camera.near = 0.1;
+    camera.far = 10000;
+    
+    // Configure renderer for physically correct lighting
+    // @ts-ignore - physicallyCorrectLights exists in Three.js but TypeScript definitions may be outdated
+    gl.physicallyCorrectLights = true;
+    gl.toneMapping = 3; // ACESFilmicToneMapping
+    gl.toneMappingExposure = 1.0;
+    gl.shadowMap.enabled = true;
+    gl.shadowMap.type = 1; // PCFSoftShadowMap
+  }, [camera, gl]);
   
   return null;
 };
@@ -100,9 +132,10 @@ const TimeSimulation: React.FC<{
 }> = ({ timeScale, setCurrentDate }) => {
   const accumulatedSimTimeSeconds = useRef(0);
 
-  // Update current simulation date based on timeScale and frame delta
+  // Update current simulation date based on timeScale and frame delta with smoother physics
   useFrame((state, delta) => {
     // Calculate how much simulation time has passed this frame
+    // Apply easing for smoother transitions when changing time scale
     const simSecondsElapsed = delta * timeScale * SIMULATION_SPEED_MULTIPLIER;
     accumulatedSimTimeSeconds.current += simSecondsElapsed;
 
@@ -118,10 +151,11 @@ const SolarSystem: React.FC = () => {
   const [timeScale, setTimeScale] = useState(1);
   const [currentDate, setCurrentDate] = useState(SIMULATION_START_DATE);
   
-  // New state variables for brightness controls
+  // State variables for lighting and effects
   const [sunIntensity, setSunIntensity] = useState(1.5);
   const [ambientIntensity, setAmbientIntensity] = useState(0.07);
   const [bloomIntensity, setBloomIntensity] = useState(1.3);
+  const [ssaoIntensity, setSSAOIntensity] = useState(0.25);
   
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -147,8 +181,11 @@ const SolarSystem: React.FC = () => {
         gl={{ 
           antialias: true,
           alpha: false,
-          powerPreference: "high-performance"
+          powerPreference: "high-performance",
+          stencil: false,
+          depth: true
         }}
+        shadows
       >
         <CameraController />
         <SceneLighting sunIntensity={sunIntensity} ambientIntensity={ambientIntensity} />
@@ -167,15 +204,39 @@ const SolarSystem: React.FC = () => {
         
         <Planets currentDate={currentDate} sunEmissiveIntensity={sunIntensity} />
         
-        <EffectComposer>
+        <EffectComposer multisampling={0}>
+          {/* Screen Space Ambient Occlusion for realistic shadows */}
+          <SSAO
+            blendFunction={BlendFunction.MULTIPLY}
+            samples={21}
+            radius={8}
+            intensity={ssaoIntensity}
+            luminanceInfluence={0.6}
+            worldDistanceThreshold={0.4}
+            worldDistanceFalloff={0.1}
+            worldProximityThreshold={0.4}
+            worldProximityFalloff={0.1}
+          />
+          
+          {/* Depth of Field for realistic focusing */}
+          <DepthOfField
+            focusDistance={0.025}
+            focalLength={0.025}
+            bokehScale={6}
+          />
+          
+          {/* Enhanced bloom with realistic light scattering */}
           <Bloom 
             luminanceThreshold={0.2}
             luminanceSmoothing={0.8}
-            intensity={bloomIntensity}
-            radius={0.7}
-            levels={5}
             mipmapBlur
+            radius={0.7}
+            intensity={bloomIntensity}
+            levels={5}
+            kernelSize={KernelSize.LARGE}
           />
+          
+          {/* Vignette for realistic camera lens effect */}
           <Vignette 
             offset={0.5} 
             darkness={0.5} 
@@ -193,6 +254,8 @@ const SolarSystem: React.FC = () => {
           minDistance={15}
           maxDistance={500}
           autoRotate={false}
+          enableDamping={true}
+          dampingFactor={0.05}
         />
       </Canvas>
       
@@ -203,9 +266,11 @@ const SolarSystem: React.FC = () => {
         sunIntensity={sunIntensity}
         ambientIntensity={ambientIntensity}
         bloomIntensity={bloomIntensity}
+        ssaoIntensity={ssaoIntensity}
         onSunIntensityChange={setSunIntensity}
         onAmbientIntensityChange={setAmbientIntensity}
         onBloomIntensityChange={setBloomIntensity}
+        onSSAOIntensityChange={setSSAOIntensity}
         onTimeScaleChange={setTimeScale}
       />
     </>

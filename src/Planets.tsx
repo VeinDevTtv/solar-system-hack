@@ -5,14 +5,19 @@
 
 import React, { useRef } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
-import { TextureLoader, Mesh, DoubleSide, Color } from 'three';
+import { TextureLoader, Mesh, DoubleSide, Color, MeshPhysicalMaterial, MeshStandardMaterial } from 'three';
 import * as Astronomy from 'astronomy-engine'; // Import the library
 import { usePlanetStore } from './store';
 import Orbit from './Orbit';
 
+// Import environment textures
+import { useTexture } from '@react-three/drei';
+
 interface MoonData {
   name: string;
   texture: string;
+  normalMap?: string; // Added normal map for advanced lighting
+  roughnessMap?: string; // Added roughness map for PBR
   size: number;
   orbitRadius: number;
   orbitSpeed: number;
@@ -26,6 +31,9 @@ interface MoonData {
 interface PlanetData {
   name: string;
   texture: string;
+  normalMap?: string; // Added normal map for advanced lighting
+  roughnessMap?: string; // Added roughness map for PBR
+  cloudsMap?: string; // Added clouds map for Earth-like planets
   size?: number; // Optional for now
   orbitRadius?: number; // Optional for now
   orbitSpeed?: number; // Optional for now
@@ -36,6 +44,8 @@ interface PlanetData {
   axialTilt?: number;
   eccentricity?: number; // Optional for now
   color?: string;
+  atmosphereColor?: string; // Added atmosphere color
+  cloudSpeed?: number; // Cloud rotation speed
   moons?: MoonData[];
 }
 
@@ -79,6 +89,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 12104,
     axialTilt: 177.4,
     color: '#E6E6B8',
+    atmosphereColor: '#f0d080',
   },
   {
     name: 'Earth',
@@ -88,6 +99,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 12756,
     axialTilt: 23.4,
     color: '#2E5F98',
+    atmosphereColor: '#bbd4ff',
     moons: [
       {
         name: 'Moon',
@@ -110,6 +122,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 6792,
     axialTilt: 25.2,
     color: '#E67A45',
+    atmosphereColor: '#ffd9bb',
     moons: [
       {
         name: 'Phobos',
@@ -143,6 +156,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 142984,
     axialTilt: 3.1,
     color: '#B3A06D',
+    atmosphereColor: '#d9c896',
   },
   {
     name: 'Saturn',
@@ -152,6 +166,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 120536,
     axialTilt: 26.7,
     color: '#EACE87',
+    atmosphereColor: '#fff2d1',
   },
   {
     name: 'Uranus',
@@ -161,6 +176,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 51118,
     axialTilt: 97.8,
     color: '#D1E7E7',
+    atmosphereColor: '#e5ffff',
   },
   {
     name: 'Neptune',
@@ -170,6 +186,7 @@ export const planetData: PlanetData[] = [
     realDiameter: 49528,
     axialTilt: 28.3,
     color: '#3E66F9',
+    atmosphereColor: '#b8c3ff',
   },
 ];
 
@@ -182,16 +199,39 @@ interface PlanetsProps {
 const Planets: React.FC<PlanetsProps> = ({ currentDate, sunEmissiveIntensity = 1.5 }) => {
   const { setSelectedPlanet, setPlanetPosition, selectedPlanet } = usePlanetStore();
 
-  // Refs for planets
-  const planetMeshRefs = useRef<(Mesh | null)[]>([]); // Allow null refs initially
+  // Refs for planets and clouds
+  const planetMeshRefs = useRef<(Mesh | null)[]>([]); 
+  const cloudsMeshRefs = useRef<(Mesh | null)[]>([]);
+  const atmosphereMeshRefs = useRef<(Mesh | null)[]>([]);
+  
+  // Load planet textures
   const planetTextures = useLoader(
     TextureLoader,
     planetData.map((planet) => planet.texture)
   );
+  
+  // Always load textures, but with empty arrays if none are available
+  // This ensures hooks are always called in the same order
+  const normalMaps = useLoader(
+    TextureLoader,
+    planetData.filter(planet => planet.normalMap).map(planet => planet.normalMap!) || []
+  );
+  
+  const roughnessMaps = useLoader(
+    TextureLoader,
+    planetData.filter(planet => planet.roughnessMap).map(planet => planet.roughnessMap!) || []
+  );
+  
+  const cloudsMaps = useLoader(
+    TextureLoader,
+    planetData.filter(planet => planet.cloudsMap).map(planet => planet.cloudsMap!) || []
+  );
 
   // Load the ring texture for Saturn's rings
   const ringTexture = useLoader(TextureLoader, '/textures/saturn_ring.png');
-
+  // Fallback to regular texture if alpha isn't available
+  const ringAlphaTexture = useLoader(TextureLoader, '/textures/saturn_ring.png');
+  
   // Prepare moon data
   const moonsData = planetData.flatMap((planet, pIndex) =>
     planet.moons?.map((moon) => ({
@@ -201,10 +241,16 @@ const Planets: React.FC<PlanetsProps> = ({ currentDate, sunEmissiveIntensity = 1
   );
 
   // Refs and textures for moons
-  const moonMeshRefs = useRef<(Mesh | null)[]>([]); // Allow null refs initially
+  const moonMeshRefs = useRef<(Mesh | null)[]>([]); 
   const moonTextures = useLoader(
     TextureLoader,
     moonsData.map((moon) => moon.texture)
+  );
+  
+  // Always load textures, but with empty arrays if none are available
+  const moonNormalMaps = useLoader(
+    TextureLoader,
+    moonsData.filter(moon => moon.normalMap).map(moon => moon.normalMap!) || []
   );
 
   // Ring ref for Saturn
@@ -246,8 +292,24 @@ const Planets: React.FC<PlanetsProps> = ({ currentDate, sunEmissiveIntensity = 1
 
           mesh.position.set(positionX, positionY, positionZ);
 
+          // Update atmosphere position if it exists
+          const atmosphereMesh = atmosphereMeshRefs.current[index];
+          if (atmosphereMesh) {
+            atmosphereMesh.position.copy(mesh.position);
+          }
+          
+          // Update clouds position if it exists
+          const cloudsMesh = cloudsMeshRefs.current[index];
+          if (cloudsMesh) {
+            cloudsMesh.position.copy(mesh.position);
+            // Rotate clouds slightly faster than the planet for realism
+            if (planet.cloudSpeed) {
+              cloudsMesh.rotation.y += planet.cloudSpeed * delta * 50;
+            }
+          }
+
           // Update store with position as an array [x, y, z]
-           setPlanetPosition(planet.name, [positionX, positionY, positionZ]);
+          setPlanetPosition(planet.name, [positionX, positionY, positionZ]);
 
         } catch (error) {
           console.error(`Error calculating position for ${planet.name}:`, error);
@@ -257,18 +319,30 @@ const Planets: React.FC<PlanetsProps> = ({ currentDate, sunEmissiveIntensity = 1
       // --- Rotation ---
       mesh.rotation.y += (planet.rotationSpeed || 0) * delta * 50;
 
-      // Apply axial tilt - Placeholder for complex rotation logic
-      // if (planet.axialTilt !== undefined) {
-      //   // Requires Quaternion logic for correct application relative to orbit
-      // }
+      // Apply axial tilt if defined
+      if (planet.axialTilt !== undefined && mesh.rotation.x === 0) {
+        mesh.rotation.x = (planet.axialTilt * Math.PI) / 180;
+        
+        // Also apply tilt to clouds if they exist
+        const cloudsMesh = cloudsMeshRefs.current[index];
+        if (cloudsMesh) {
+          cloudsMesh.rotation.x = (planet.axialTilt * Math.PI) / 180;
+        }
+        
+        // Also apply tilt to atmosphere if it exists
+        const atmosphereMesh = atmosphereMeshRefs.current[index];
+        if (atmosphereMesh) {
+          atmosphereMesh.rotation.x = (planet.axialTilt * Math.PI) / 180;
+        }
+      }
 
       // --- Handle Saturn's Rings ---
       if (planet.name === 'Saturn' && ringRef.current) {
         ringRef.current.position.copy(mesh.position);
-        // Simple tilt for now - ideally align with planet's true tilt
+        // Apply proper tilt for Saturn's rings
         ringRef.current.rotation.x = Math.PI / 2 + (planet.axialTilt || 0) * (Math.PI / 180);
         // Let rings spin with planet for now
-        ringRef.current.rotation.y = mesh.rotation.y;
+        ringRef.current.rotation.y = mesh.rotation.y * 0.4; // Slower rotation
       }
 
       // --- Handle Moons (using old simplified logic) ---
@@ -301,102 +375,207 @@ const Planets: React.FC<PlanetsProps> = ({ currentDate, sunEmissiveIntensity = 1
     const data = planetData.find(p => p.name === planetName);
     return data ? scaleSize(data.realDiameter) : 1; // Default size if not found
   };
+  
+  // Track available advanced textures
+  const normalMapIndex: {[key: string]: number} = {};
+  const roughnessMapIndex: {[key: string]: number} = {};
+  const cloudsMapIndex: {[key: string]: number} = {};
+  
+  // Initialize texture indices
+  let normalMapCounter = 0;
+  let roughnessMapCounter = 0;
+  let cloudsMapCounter = 0;
+  
+  // Populate indices without conditionals
+  planetData.forEach(planet => {
+    if (planet.normalMap) {
+      normalMapIndex[planet.name] = normalMapCounter++;
+    }
+    if (planet.roughnessMap) {
+      roughnessMapIndex[planet.name] = roughnessMapCounter++;
+    }
+    if (planet.cloudsMap) {
+      cloudsMapIndex[planet.name] = cloudsMapCounter++;
+    }
+  });
 
   return (
     <>
       {planetData.map((planet, index) => {
-         const planetSize = getPlanetSize(planet.name);
+        const planetSize = getPlanetSize(planet.name);
+        const hasNormalMap = planet.normalMap !== undefined && normalMapIndex[planet.name] !== undefined;
+        const hasRoughnessMap = planet.roughnessMap !== undefined && roughnessMapIndex[planet.name] !== undefined;
+        const hasCloudsMap = planet.cloudsMap !== undefined && cloudsMapIndex[planet.name] !== undefined;
+        const hasAtmosphere = planet.atmosphereColor !== undefined;
+        
         return (
           <React.Fragment key={planet.name}>
+            {/* Main planet mesh */}
             <mesh
               ref={(el) => (planetMeshRefs.current[index] = el)}
               onClick={() => setSelectedPlanet(planet.name)}
-              position={[planet.realOrbitRadius * AU_TO_SCENE_SCALE, 0, 0]} // Initial placeholder position (will be updated by useFrame)
+              position={[planet.realOrbitRadius * AU_TO_SCENE_SCALE, 0, 0]} // Initial position
+              castShadow={planet.name !== 'Sun'}
+              receiveShadow={planet.name !== 'Sun'}
             >
-              <sphereGeometry args={[planetSize, 32, 32]} />
-              <meshStandardMaterial
-                map={planetTextures[index]}
-                metalness={0.4}
-                roughness={0.7}
-                emissive={planet.name === 'Sun' ? new Color(planet.color || '#FFFFFF') : new Color(0x000000)}
-                emissiveIntensity={planet.name === 'Sun' ? sunEmissiveIntensity : 0}
-              />
-               {/* Glow effect for selected planet */}
-              {selectedPlanet === planet.name && planet.name !== 'Sun' && (
-                 <mesh>
-                   <sphereGeometry args={[planetSize * 1.2, 32, 32]} />
-                   <meshStandardMaterial
-                     color={new Color(planet.color || '#FFFFFF').multiplyScalar(1.5)}
-                     transparent
-                     opacity={0.3}
-                     side={DoubleSide}
-                     depthWrite={false}
-                     emissive={new Color(planet.color || '#FFFFFF')}
-                     emissiveIntensity={0.8}
-                   />
-                 </mesh>
+              <sphereGeometry args={[planetSize, 64, 64]} />
+              
+              {planet.name === 'Sun' ? (
+                // Sun uses emissive material
+                <meshStandardMaterial
+                  map={planetTextures[index]}
+                  emissive={new Color(planet.color || '#FFFFFF')}
+                  emissiveIntensity={sunEmissiveIntensity}
+                  emissiveMap={planetTextures[index]}
+                />
+              ) : (
+                // Other planets use physically-based materials - modified to handle missing textures
+                <meshPhysicalMaterial
+                  map={planetTextures[index]}
+                  normalMap={hasNormalMap ? normalMaps[normalMapIndex[planet.name]] : null}
+                  roughnessMap={hasRoughnessMap ? roughnessMaps[roughnessMapIndex[planet.name]] : null}
+                  metalness={planet.name === 'Mercury' ? 0.6 : 0.2}
+                  roughness={0.7}
+                  clearcoat={planet.name === 'Earth' || planet.name === 'Venus' ? 0.2 : 0}
+                  clearcoatRoughness={0.4}
+                />
               )}
-               {/* Sun's constant glow */}
-              {planet.name === 'Sun' && (
-                 <mesh>
-                   <sphereGeometry args={[planetSize * 1.1, 48, 48]} />
-                   <meshStandardMaterial
-                     color={new Color(planet.color || '#FFFFFF')}
-                     transparent
-                     opacity={0.25}
-                     side={DoubleSide}
-                     depthWrite={false}
-                     emissive={new Color(planet.color || '#FFFFFF')}
-                     emissiveIntensity={sunEmissiveIntensity * 0.8} // Adjust intensity based on prop
-                   />
-                 </mesh>
+              
+              {/* Glow effect for selected planet */}
+              {selectedPlanet === planet.name && planet.name !== 'Sun' && (
+                <mesh>
+                  <sphereGeometry args={[planetSize * 1.2, 32, 32]} />
+                  <meshStandardMaterial
+                    color={new Color(planet.color || '#FFFFFF').multiplyScalar(1.5)}
+                    transparent
+                    opacity={0.3}
+                    side={DoubleSide}
+                    depthWrite={false}
+                    emissive={new Color(planet.color || '#FFFFFF')}
+                    emissiveIntensity={0.8}
+                  />
+                </mesh>
               )}
             </mesh>
+            
+            {/* Clouds layer for Earth-like planets */}
+            {hasCloudsMap && (
+              <mesh
+                ref={(el) => (cloudsMeshRefs.current[index] = el)}
+                position={[planet.realOrbitRadius * AU_TO_SCENE_SCALE, 0, 0]}
+              >
+                <sphereGeometry args={[planetSize * 1.02, 64, 64]} />
+                <meshStandardMaterial
+                  map={cloudsMaps[cloudsMapIndex[planet.name]]}
+                  transparent
+                  opacity={0.8}
+                  depthWrite={false}
+                  side={DoubleSide}
+                />
+              </mesh>
+            )}
+            
+            {/* Atmosphere effect for planets with atmosphere */}
+            {hasAtmosphere && planet.name !== 'Sun' && (
+              <mesh
+                ref={(el) => (atmosphereMeshRefs.current[index] = el)}
+                position={[planet.realOrbitRadius * AU_TO_SCENE_SCALE, 0, 0]}
+              >
+                <sphereGeometry args={[planetSize * 1.1, 32, 32]} />
+                <meshStandardMaterial
+                  color={new Color(planet.atmosphereColor!)}
+                  transparent
+                  opacity={0.15}
+                  side={DoubleSide}
+                  depthWrite={false}
+                />
+              </mesh>
+            )}
+            
+            {/* Sun's constant glow */}
+            {planet.name === 'Sun' && (
+              <mesh 
+                position={[0, 0, 0]}
+              >
+                <sphereGeometry args={[planetSize * 1.1, 64, 64]} />
+                <meshStandardMaterial
+                  color={new Color(planet.color || '#FFFFFF')}
+                  transparent
+                  opacity={0.3}
+                  side={DoubleSide}
+                  depthWrite={false}
+                  emissive={new Color(planet.color || '#FFFFFF')}
+                  emissiveIntensity={sunEmissiveIntensity * 0.8}
+                />
+              </mesh>
+            )}
+            
             {/* Render orbit line using realOrbitRadius for visual reference */}
-             {planet.name !== 'Sun' && <Orbit radius={planet.realOrbitRadius * AU_TO_SCENE_SCALE} />}
+            {planet.name !== 'Sun' && (
+              <Orbit 
+                radius={planet.realOrbitRadius * AU_TO_SCENE_SCALE} 
+                color={planet.color ?? 'white'} 
+                opacity={0.12} 
+              />
+            )}
           </React.Fragment>
         );
       })}
 
-      {/* Saturn's Rings */}
+      {/* Saturn's Rings with improved material */}
       <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[getPlanetSize('Saturn') * 1.3, getPlanetSize('Saturn') * 2.2, 64]} />
-        <meshStandardMaterial
+        <ringGeometry args={[getPlanetSize('Saturn') * 1.3, getPlanetSize('Saturn') * 2.2, 128]} />
+        <meshPhysicalMaterial
           map={ringTexture}
+          alphaMap={ringAlphaTexture}
           side={DoubleSide}
           transparent={true}
-          opacity={0.8}
-          alphaTest={0.5} // Adjust alphaTest for better transparency handling
+          opacity={0.9}
+          alphaTest={0.2}
+          roughness={0.7}
+          metalness={0.2}
+          clearcoat={0.1}
         />
       </mesh>
 
-      {/* Render Moons */}
-      {moonsData.map((moon, index) => (
-        <mesh
-          key={`${moon.parentIndex}-${moon.name}`}
-          ref={(el) => (moonMeshRefs.current[index] = el)}
-           onClick={(e) => { e.stopPropagation(); setSelectedPlanet(moon.name); }} // Select moon on click
-          // Initial position will be updated by useFrame relative to parent
-        >
-          <sphereGeometry args={[moon.size, 16, 16]} />
-          <meshStandardMaterial map={moonTextures[index]} metalness={0.2} roughness={0.8}/>
+      {/* Render Moons with improved materials */}
+      {moonsData.map((moon, index) => {
+        const hasNormalMap = moon.normalMap !== undefined;
+        
+        return (
+          <mesh
+            key={`${moon.parentIndex}-${moon.name}`}
+            ref={(el) => (moonMeshRefs.current[index] = el)}
+            onClick={(e) => { e.stopPropagation(); setSelectedPlanet(moon.name); }}
+            castShadow
+            receiveShadow
+          >
+            <sphereGeometry args={[moon.size, 32, 32]} />
+            <meshPhysicalMaterial 
+              map={moonTextures[index]}
+              normalMap={hasNormalMap ? moonNormalMaps[moonsData.findIndex(m => m.normalMap && m.name === moon.name)] : null}
+              metalness={0.1}
+              roughness={0.9}
+            />
+            
             {/* Glow effect for selected moon */}
-           {selectedPlanet === moon.name && (
-             <mesh>
-               <sphereGeometry args={[moon.size * 1.3, 16, 16]} />
-               <meshStandardMaterial
-                 color={new Color('#CCCCCC')} // Generic glow for moons
-                 transparent
-                 opacity={0.4}
-                 side={DoubleSide}
-                 depthWrite={false}
-                 emissive={new Color('#FFFFFF')}
-                 emissiveIntensity={0.5}
-               />
-             </mesh>
-           )}
-        </mesh>
-      ))}
+            {selectedPlanet === moon.name && (
+              <mesh>
+                <sphereGeometry args={[moon.size * 1.3, 16, 16]} />
+                <meshStandardMaterial
+                  color={new Color('#CCCCCC')}
+                  transparent
+                  opacity={0.4}
+                  side={DoubleSide}
+                  depthWrite={false}
+                  emissive={new Color('#FFFFFF')}
+                  emissiveIntensity={0.5}
+                />
+              </mesh>
+            )}
+          </mesh>
+        );
+      })}
     </>
   );
 };

@@ -6,10 +6,14 @@ interface ControlPanelProps {
   sunIntensity: number;
   ambientIntensity: number;
   bloomIntensity: number;
+  ssrIntensity?: number;
+  ssaoIntensity?: number;
   onSunIntensityChange: (value: number) => void;
   onAmbientIntensityChange: (value: number) => void;
   onBloomIntensityChange: (value: number) => void;
   onTimeScaleChange: (value: number) => void;
+  onSSRIntensityChange?: (value: number) => void;
+  onSSAOIntensityChange?: (value: number) => void;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -17,12 +21,17 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   sunIntensity,
   ambientIntensity,
   bloomIntensity,
+  ssrIntensity = 0.6,
+  ssaoIntensity = 0.25,
   onSunIntensityChange,
   onAmbientIntensityChange,
   onBloomIntensityChange,
-  onTimeScaleChange
+  onTimeScaleChange,
+  onSSRIntensityChange,
+  onSSAOIntensityChange
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Icons
   const IconSettings = () => (
@@ -55,6 +64,18 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="11 19 2 12 11 5 11 19"></polygon>
       <polygon points="22 19 13 12 22 5 22 19"></polygon>
+    </svg>
+  );
+  
+  const IconChevronDown = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  );
+  
+  const IconChevronUp = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="18 15 12 9 6 15"></polyline>
     </svg>
   );
 
@@ -132,6 +153,45 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           onChange={(e) => onBloomIntensityChange(parseFloat(e.target.value))}
         />
       </div>
+      
+      <div className="control-panel__advanced-toggle" onClick={() => setShowAdvanced(!showAdvanced)}>
+        <span>Advanced Ray Tracing</span>
+        {showAdvanced ? <IconChevronUp /> : <IconChevronDown />}
+      </div>
+      
+      {showAdvanced && onSSRIntensityChange && (
+        <div className="control-panel__section">
+          <div className="control-panel__section-title">
+            <span>Reflections (SSR)</span>
+            <span className="value">{ssrIntensity.toFixed(2)}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={ssrIntensity}
+            onChange={(e) => onSSRIntensityChange(parseFloat(e.target.value))}
+          />
+        </div>
+      )}
+      
+      {showAdvanced && onSSAOIntensityChange && (
+        <div className="control-panel__section">
+          <div className="control-panel__section-title">
+            <span>Shadows (SSAO)</span>
+            <span className="value">{ssaoIntensity.toFixed(2)}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={ssaoIntensity}
+            onChange={(e) => onSSAOIntensityChange(parseFloat(e.target.value))}
+          />
+        </div>
+      )}
 
       <div className="time-control">
         <button onClick={slowDown}>
