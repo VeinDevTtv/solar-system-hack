@@ -3,10 +3,14 @@ import { usePlanetStore, KeyBindings, DEFAULT_KEYBINDINGS } from '../store';
 import '../styles/SettingsPanel.scss';
 
 const SettingsPanel: React.FC = () => {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  // Default to open during development to check if it renders at all
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'controls'>('general');
   const [listeningFor, setListeningFor] = useState<keyof KeyBindings | null>(null);
   const listeningRef = useRef<HTMLButtonElement | null>(null);
+  
+  // Debug log to see if component is rendering
+  console.log("SettingsPanel rendering, collapsed:", isCollapsed);
   
   const { 
     settings, 
@@ -110,8 +114,15 @@ const SettingsPanel: React.FC = () => {
   // Display collapsed icon when minimized
   if (isCollapsed) {
     return (
-      <div className="settings-panel__collapsed" onClick={() => setIsCollapsed(false)}>
+      <div 
+        className="settings-panel__collapsed" 
+        onClick={() => setIsCollapsed(false)}
+        style={{ cursor: 'pointer' }}
+      >
         <IconSettings />
+        <div style={{ position: 'absolute', bottom: -20, fontSize: 10, color: 'white', whiteSpace: 'nowrap' }}>
+          Click for settings
+        </div>
       </div>
     );
   }
@@ -149,10 +160,15 @@ const SettingsPanel: React.FC = () => {
                 <label>Free Camera Mode</label>
                 <div className="toggle-switch">
                   <input 
+                    id="free-camera-toggle"
                     type="checkbox" 
                     checked={settings.freeCamera} 
-                    onChange={() => toggleFreeCamera()} 
+                    onChange={() => {
+                      console.log("Toggle clicked, current value:", settings.freeCamera);
+                      toggleFreeCamera();
+                    }} 
                   />
+                  <label htmlFor="free-camera-toggle"></label>
                   <span className="slider"></span>
                 </div>
               </div>
@@ -191,10 +207,12 @@ const SettingsPanel: React.FC = () => {
                 <label>Invert Y-Axis</label>
                 <div className="toggle-switch">
                   <input 
+                    id="invert-y-toggle"
                     type="checkbox" 
                     checked={settings.invertY} 
                     onChange={() => toggleInvertY()} 
                   />
+                  <label htmlFor="invert-y-toggle"></label>
                   <span className="slider"></span>
                 </div>
               </div>

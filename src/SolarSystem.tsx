@@ -197,6 +197,9 @@ const SolarSystem: React.FC = () => {
     setIsLoading(false);
   };
 
+  // Debug log to check if SolarSystem renders
+  console.log("SolarSystem rendering");
+
   return (
     <>
       {isLoading && <LoadingScreen onLoaded={handleLoaded} />}
@@ -295,6 +298,8 @@ const SolarSystem: React.FC = () => {
         onSSAOIntensityChange={setSSAOIntensity}
         onTimeScaleChange={setTimeScale}
       />
+      
+      {/* Render Settings Panel */}
       <SettingsPanel />
     </>
   );
