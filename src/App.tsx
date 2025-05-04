@@ -1,18 +1,21 @@
 // File Name: App.tsx
 // Author: Abdelkarim
-// Purpose: Main application component that includes the SolarSystem and PlanetInfo components.
+// Purpose: Main application component that includes the SolarSystem.
 // Date: 10/26/2024
 
 import React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import SolarSystem from './SolarSystem';
-import PlanetInfo from './PlanetInfo';
 import ReactHowler from 'react-howler';
+import './styles/main.scss';
 
 const theme = createTheme({
   palette: {
     mode: 'dark',
+  },
+  typography: {
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
 });
 
@@ -24,10 +27,9 @@ function App() {
         src="/audio/space-music.mp3"
         playing={true}
         loop={true}
-        volume={0.2}
+        volume={0.15}
       />
       <SolarSystem />
-      <PlanetInfo />
     </ThemeProvider>
   );
 }

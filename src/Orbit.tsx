@@ -1,106 +1,47 @@
-// src/Orbit.tsx
-import React from 'react';
-import { Line, Sphere } from '@react-three/drei';
-import { Vector3 } from 'three';
+// File Name: Orbit.tsx
+// Author: Abdelkarim
+// Purpose: Renders orbit lines for planets.
+// Date: 10/26/2024
+
+import React, { useMemo } from 'react';
+import { Line } from '@react-three/drei';
 
 interface OrbitProps {
   radius: number;
-  eccentricity?: number;
-  rotationAngle?: number; // In radians
   color?: string;
-  showFoci?: boolean;
+  opacity?: number;
+  lineWidth?: number;
 }
 
 const Orbit: React.FC<OrbitProps> = ({ 
   radius, 
-  eccentricity = 0, 
-  rotationAngle = 0,
-  color = "white",
-  showFoci = true
+  color = 'white', 
+  opacity = 0.15, 
+  lineWidth = 1 
 }) => {
-  // Calculate semi-minor axis from eccentricity and semi-major axis
-  const semiMajorAxis = radius;
-  const semiMinorAxis = semiMajorAxis * Math.sqrt(1 - (eccentricity * eccentricity));
-  
-  // Calculate focus distance from center
-  const focusDistance = eccentricity * semiMajorAxis;
-  
-  const points: [number, number, number][] = [];
-  const segments = 256; // More segments for smoother orbits
-  
-  for (let i = 0; i <= segments; i++) {
-    const angle = (i / segments) * Math.PI * 2;
+  // Generate orbit circle points with memoization
+  const points = useMemo(() => {
+    const segments = 128; // Number of segments in the orbit circle
+    const tempPoints = [];
     
-    // Parametric equation of ellipse
-    const x = Math.cos(angle) * semiMajorAxis;
-    const z = Math.sin(angle) * semiMinorAxis;
-    
-    // Apply rotation if specified
-    if (rotationAngle !== 0) {
-      const cosRot = Math.cos(rotationAngle);
-      const sinRot = Math.sin(rotationAngle);
-      
-      // Rotation matrix application
-      const rotatedX = x * cosRot - z * sinRot;
-      const rotatedZ = x * sinRot + z * cosRot;
-      
-      points.push([rotatedX, 0, rotatedZ]);
-    } else {
-      points.push([x, 0, z]);
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const x = radius * Math.cos(angle);
+      const z = radius * Math.sin(angle);
+      tempPoints.push([x, 0, z] as [number, number, number]);
     }
-  }
-  
-  // Calculate perihelion point (closest to Sun)
-  const perihelionX = -semiMajorAxis * (1 - eccentricity);
-  const perihelionZ = 0;
-  
-  // Calculate aphelion point (farthest from Sun)
-  const aphelionX = semiMajorAxis * (1 + eccentricity);
-  const aphelionZ = 0;
-  
-  // Create lighter color for focus points
-  const getFocusColor = (baseColor: string): string => {
-    // For white, return a pale blue
-    if (baseColor === "white") return "#aaccff";
     
-    // Otherwise brighten the base color by mixing with white
-    return baseColor;
-  };
+    return tempPoints;
+  }, [radius]);
 
   return (
-    <>
-      <Line
-        points={points}
-        color={color}
-        lineWidth={0.5}
-        dashed
-        dashSize={0.5}
-        gapSize={0.5}
-        transparent
-        opacity={0.6}
-      />
-      
-      {/* Display foci points if requested and if the orbit is elliptical */}
-      {showFoci && eccentricity > 0.01 && (
-        <>
-          {/* Perihelion marker (closest to sun) */}
-          <Sphere 
-            args={[0.15, 8, 8]}
-            position={[perihelionX, 0, perihelionZ]}
-          >
-            <meshBasicMaterial color={getFocusColor(color)} transparent opacity={0.7} />
-          </Sphere>
-          
-          {/* Aphelion marker (farthest from sun) */}
-          <Sphere 
-            args={[0.15, 8, 8]} 
-            position={[aphelionX, 0, aphelionZ]}
-          >
-            <meshBasicMaterial color={getFocusColor(color)} transparent opacity={0.7} />
-          </Sphere>
-        </>
-      )}
-    </>
+    <Line
+      points={points}
+      color={color}
+      lineWidth={lineWidth}
+      transparent
+      opacity={opacity}
+    />
   );
 };
 

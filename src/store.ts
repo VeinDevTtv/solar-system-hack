@@ -12,7 +12,7 @@ interface PlanetPosition {
 interface PlanetStore {
   selectedPlanet: string | null;
   targetPlanet: string | null;
-  setSelectedPlanet: (planet: string) => void;
+  setSelectedPlanet: (planet: string | null) => void;
   setTargetPlanet: (planet: string | null) => void;
   planetPositions: PlanetPosition;
   setPlanetPosition: (planet: string, position: [number, number, number]) => void;

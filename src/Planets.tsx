@@ -3,7 +3,7 @@
 // Purpose: Renders all planets and moons, updates their positions, and handles interactions.
 // Date: 10/26/2024
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { TextureLoader, Mesh, DoubleSide, Color } from 'three';
 import * as Astronomy from 'astronomy-engine'; // Import the library
@@ -176,9 +176,10 @@ export const planetData: PlanetData[] = [
 // Accept currentDate from parent component
 interface PlanetsProps {
   currentDate: Date;
+  sunEmissiveIntensity?: number; // Added prop for sun's emissive intensity
 }
 
-const Planets: React.FC<PlanetsProps> = ({ currentDate }) => {
+const Planets: React.FC<PlanetsProps> = ({ currentDate, sunEmissiveIntensity = 1.5 }) => {
   const { setSelectedPlanet, setPlanetPosition, selectedPlanet } = usePlanetStore();
 
   // Refs for planets
@@ -318,7 +319,7 @@ const Planets: React.FC<PlanetsProps> = ({ currentDate }) => {
                 metalness={0.4}
                 roughness={0.7}
                 emissive={planet.name === 'Sun' ? new Color(planet.color || '#FFFFFF') : new Color(0x000000)}
-                emissiveIntensity={planet.name === 'Sun' ? 1.5 : 0}
+                emissiveIntensity={planet.name === 'Sun' ? sunEmissiveIntensity : 0}
               />
                {/* Glow effect for selected planet */}
               {selectedPlanet === planet.name && planet.name !== 'Sun' && (
@@ -345,8 +346,8 @@ const Planets: React.FC<PlanetsProps> = ({ currentDate }) => {
                      opacity={0.25}
                      side={DoubleSide}
                      depthWrite={false}
-                      emissive={new Color(planet.color || '#FFFFFF')}
-                     emissiveIntensity={1} // Adjust intensity for desired glow
+                     emissive={new Color(planet.color || '#FFFFFF')}
+                     emissiveIntensity={sunEmissiveIntensity * 0.8} // Adjust intensity based on prop
                    />
                  </mesh>
               )}

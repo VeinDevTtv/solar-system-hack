@@ -5,34 +5,38 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars, Html, Text, useHelper } from '@react-three/drei';
+import { OrbitControls, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
-import { PointLightHelper, PointLight, SpotLightHelper, Color } from 'three';
+import { PointLight } from 'three';
 import Planets from './Planets';
+import ControlPanel from './components/ControlPanel';
+import PlanetInfo from './components/PlanetInfo';
+import './styles/main.scss';
 
-// Component to display time scale
-const ScaleDial: React.FC<{ timeScale: number }> = ({ timeScale }) => {
+// Loading screen component
+const LoadingScreen: React.FC<{ onLoaded: () => void }> = ({ onLoaded }) => {
+  useEffect(() => {
+    // Simulate loading time
+    const timer = setTimeout(() => {
+      onLoaded();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [onLoaded]);
+
   return (
-    <Html position={[-window.innerWidth / 2 + 100, window.innerHeight / 2 - 40, 0]} 
-          center 
-          style={{ 
-            color: 'white', 
-            background: 'rgba(0,0,0,0.5)', 
-            padding: '5px 10px', 
-            borderRadius: '5px',
-            pointerEvents: 'none'
-          }}>
-      <div>
-        <div>Time Scale: {timeScale.toFixed(1)}x</div>
-        <div style={{ fontSize: '0.7em' }}>Use +/- keys to adjust speed</div>
-      </div>
-    </Html>
+    <div className="loading-screen">
+      <h1>Stellar System</h1>
+      <div className="loader"></div>
+    </div>
   );
 };
 
 // Enhanced lighting component for the scene
-const SceneLighting = () => {
+const SceneLighting: React.FC<{ 
+  sunIntensity: number;
+  ambientIntensity: number;
+}> = ({ sunIntensity, ambientIntensity }) => {
   // Main sun light
   const sunLight = useRef<PointLight>(null);
   
@@ -40,7 +44,8 @@ const SceneLighting = () => {
   useFrame((state) => {
     if (sunLight.current) {
       const time = state.clock.getElapsedTime();
-      const intensity = 2 + Math.sin(time * 0.5) * 0.2; // Subtle pulsating between 1.8 and 2.2
+      const baseIntensity = sunIntensity; // Use the passed intensity value
+      const intensity = baseIntensity + Math.sin(time * 0.5) * 0.15; // Subtle pulsating
       sunLight.current.intensity = intensity;
     }
   });
@@ -51,20 +56,20 @@ const SceneLighting = () => {
       <pointLight 
         ref={sunLight} 
         position={[0, 0, 0]} 
-        intensity={2} 
+        intensity={sunIntensity} 
         color="#FDB813"
         distance={100}
         decay={1.5}
       />
       
       {/* Ambient light for general scene illumination */}
-      <ambientLight intensity={0.07} />
+      <ambientLight intensity={ambientIntensity} />
       
       {/* Additional ambient light to ensure planets are visible */}
       <hemisphereLight
         color="#ffffbb"
         groundColor="#080820"
-        intensity={0.1}
+        intensity={ambientIntensity * 1.2}
       />
     </>
   );
@@ -88,9 +93,11 @@ const SIMULATION_START_DATE = new Date(); // Start simulation from now
 const SECONDS_PER_DAY = 86400;
 const SIMULATION_SPEED_MULTIPLIER = 5 * SECONDS_PER_DAY; // timeScale=1 means 5 days pass per second
 
-const SolarSystem: React.FC = () => {
-  const [timeScale, setTimeScale] = useState(1);
-  const [currentDate, setCurrentDate] = useState(SIMULATION_START_DATE);
+// This component handles time updates within the Canvas
+const TimeSimulation: React.FC<{ 
+  timeScale: number, 
+  setCurrentDate: React.Dispatch<React.SetStateAction<Date>>
+}> = ({ timeScale, setCurrentDate }) => {
   const accumulatedSimTimeSeconds = useRef(0);
 
   // Update current simulation date based on timeScale and frame delta
@@ -104,77 +111,104 @@ const SolarSystem: React.FC = () => {
     setCurrentDate(newSimDate);
   });
 
-  // Listen for keyboard shortcuts to adjust time scale
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '+' || e.key === '=') {
-        setTimeScale(prev => Math.min(prev * 1.5, 10));
-      } else if (e.key === '-' || e.key === '_') {
-        setTimeScale(prev => Math.max(prev / 1.5, 0.1));
-      } else if (e.key === '0') {
-        setTimeScale(1);
-      }
-    };
+  return null;
+};
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+const SolarSystem: React.FC = () => {
+  const [timeScale, setTimeScale] = useState(1);
+  const [currentDate, setCurrentDate] = useState(SIMULATION_START_DATE);
+  
+  // New state variables for brightness controls
+  const [sunIntensity, setSunIntensity] = useState(1.5);
+  const [ambientIntensity, setAmbientIntensity] = useState(0.07);
+  const [bloomIntensity, setBloomIntensity] = useState(1.3);
+  
+  // Loading state
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Handle loading completion
+  const handleLoaded = () => {
+    setIsLoading(false);
+  };
 
   return (
-    <Canvas
-      camera={{ position: [0, 70, 150], fov: 45 }}
-      style={{ height: '100vh', width: '100vw' }}
-      dpr={[1, 2]} // Dynamic pixel ratio for better performance
-      gl={{ 
-        antialias: true,
-        alpha: false,
-        powerPreference: "high-performance"
-      }}
-    >
-      <CameraController />
-      <SceneLighting />
+    <>
+      {isLoading && <LoadingScreen onLoaded={handleLoaded} />}
       
-      <Stars 
-        radius={1000} 
-        depth={100} 
-        count={7000} 
-        factor={4} 
-        saturation={0.8} 
-        fade 
-      />
-      
-      <Planets currentDate={currentDate} />
-      
-      <EffectComposer>
-        <Bloom 
-          luminanceThreshold={0.2}
-          luminanceSmoothing={0.8}
-          intensity={1.8}
-          radius={0.7}
-          levels={5}
-          mipmapBlur
+      <Canvas
+        camera={{ position: [0, 70, 150], fov: 45 }}
+        style={{ 
+          height: '100vh', 
+          width: '100vw',
+          opacity: isLoading ? 0 : 1,
+          transition: 'opacity 0.5s ease'
+        }}
+        dpr={[1, 2]} // Dynamic pixel ratio for better performance
+        gl={{ 
+          antialias: true,
+          alpha: false,
+          powerPreference: "high-performance"
+        }}
+      >
+        <CameraController />
+        <SceneLighting sunIntensity={sunIntensity} ambientIntensity={ambientIntensity} />
+        
+        {/* Add the time simulation component inside the Canvas */}
+        <TimeSimulation timeScale={timeScale} setCurrentDate={setCurrentDate} />
+        
+        <Stars 
+          radius={1000} 
+          depth={100} 
+          count={7000} 
+          factor={4} 
+          saturation={0.8} 
+          fade 
         />
-        <Vignette 
-          offset={0.5} 
-          darkness={0.5} 
-          eskil={false} 
-          blendFunction={BlendFunction.NORMAL}
+        
+        <Planets currentDate={currentDate} sunEmissiveIntensity={sunIntensity} />
+        
+        <EffectComposer>
+          <Bloom 
+            luminanceThreshold={0.2}
+            luminanceSmoothing={0.8}
+            intensity={bloomIntensity}
+            radius={0.7}
+            levels={5}
+            mipmapBlur
+          />
+          <Vignette 
+            offset={0.5} 
+            darkness={0.5} 
+            eskil={false} 
+            blendFunction={BlendFunction.NORMAL}
+          />
+        </EffectComposer>
+        
+        <OrbitControls
+          enablePan={true}
+          enableZoom={true}
+          zoomSpeed={0.6}
+          panSpeed={0.5}
+          rotateSpeed={0.5}
+          minDistance={15}
+          maxDistance={500}
+          autoRotate={false}
         />
-      </EffectComposer>
+      </Canvas>
       
-      <OrbitControls
-        enablePan={true}
-        enableZoom={true}
-        zoomSpeed={0.6}
-        panSpeed={0.5}
-        rotateSpeed={0.5}
-        minDistance={15}
-        maxDistance={500}
-        autoRotate={false}
+      {/* Modern UI outside the canvas */}
+      <PlanetInfo />
+      <ControlPanel 
+        timeScale={timeScale}
+        sunIntensity={sunIntensity}
+        ambientIntensity={ambientIntensity}
+        bloomIntensity={bloomIntensity}
+        onSunIntensityChange={setSunIntensity}
+        onAmbientIntensityChange={setAmbientIntensity}
+        onBloomIntensityChange={setBloomIntensity}
+        onTimeScaleChange={setTimeScale}
       />
-      
-      <ScaleDial timeScale={timeScale} />
-    </Canvas>
+    </>
   );
 };
 

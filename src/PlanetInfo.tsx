@@ -306,7 +306,7 @@ const calculateOrbitalExtremes = (planet: string): { perihelion: number, aphelio
   if (!planetInfo || planet === 'Sun') return null;
   
   const semiMajorAxis = planetInfo.realOrbitRadius;
-  const eccentricity = planetInfo.eccentricity;
+  const eccentricity = planetInfo.eccentricity ?? 0;
   
   // Perihelion = a(1-e)
   const perihelion = semiMajorAxis * (1 - eccentricity);
