@@ -12,6 +12,9 @@ import { PointLight, Vector3, Color } from 'three';
 import Planets from './Planets';
 import ControlPanel from './components/ControlPanel';
 import PlanetInfo from './components/PlanetInfo';
+import SettingsPanel from './components/SettingsPanel';
+import FreeFlightControls from './components/FreeFlightControls';
+import { usePlanetStore } from './store';
 import './styles/main.scss';
 
 // Loading screen component
@@ -95,9 +98,15 @@ const SceneLighting: React.FC<{
   );
 };
 
-// Camera controller to adjust settings with realistic physics
+// Constants for time calculation
+const SIMULATION_START_DATE = new Date(); // Start simulation from now
+const SECONDS_PER_DAY = 86400;
+const SIMULATION_SPEED_MULTIPLIER = 5 * SECONDS_PER_DAY; // timeScale=1 means 5 days pass per second
+
+// Camera controller with enhanced features
 const CameraController = () => {
   const { camera, gl } = useThree();
+  const { settings } = usePlanetStore();
   
   useEffect(() => {
     // Set better initial camera position
@@ -120,11 +129,6 @@ const CameraController = () => {
   return null;
 };
 
-// Constants for time calculation
-const SIMULATION_START_DATE = new Date(); // Start simulation from now
-const SECONDS_PER_DAY = 86400;
-const SIMULATION_SPEED_MULTIPLIER = 5 * SECONDS_PER_DAY; // timeScale=1 means 5 days pass per second
-
 // This component handles time updates within the Canvas
 const TimeSimulation: React.FC<{ 
   timeScale: number, 
@@ -145,6 +149,34 @@ const TimeSimulation: React.FC<{
   });
 
   return null;
+};
+
+// Enhanced OrbitControls that switches between orbit and free flight modes
+const EnhancedControls = () => {
+  const { settings } = usePlanetStore();
+  
+  // Render appropriate controls based on mode
+  if (settings.freeCamera) {
+    // In free camera mode, just render the free flight controls
+    return <FreeFlightControls />;
+  }
+  
+  // In orbit mode, render orbit controls with sensitivity settings
+  return (
+    <OrbitControls
+      enablePan={true}
+      enableZoom={true}
+      zoomSpeed={0.6 * settings.mouseSensitivity}
+      panSpeed={0.5 * settings.mouseSensitivity}
+      rotateSpeed={0.5 * settings.mouseSensitivity}
+      minDistance={15}
+      maxDistance={500}
+      autoRotate={false}
+      enableDamping={true}
+      dampingFactor={0.05}
+      // OrbitControls doesn't have invertY prop, so we'll handle this in FreeFlightControls instead
+    />
+  );
 };
 
 const SolarSystem: React.FC = () => {
@@ -245,18 +277,8 @@ const SolarSystem: React.FC = () => {
           />
         </EffectComposer>
         
-        <OrbitControls
-          enablePan={true}
-          enableZoom={true}
-          zoomSpeed={0.6}
-          panSpeed={0.5}
-          rotateSpeed={0.5}
-          minDistance={15}
-          maxDistance={500}
-          autoRotate={false}
-          enableDamping={true}
-          dampingFactor={0.05}
-        />
+        {/* Custom controls based on mode */}
+        <EnhancedControls />
       </Canvas>
       
       {/* Modern UI outside the canvas */}
@@ -273,6 +295,7 @@ const SolarSystem: React.FC = () => {
         onSSAOIntensityChange={setSSAOIntensity}
         onTimeScaleChange={setTimeScale}
       />
+      <SettingsPanel />
     </>
   );
 };

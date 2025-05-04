@@ -1,25 +1,27 @@
 @import './ControlPanel.scss';
 @import './InfoPanel.scss';
+@import './SettingsPanel.scss';
 
 // Global styles
+:root {
+  --background-color: #050a18;
+  --text-color: #ffffff;
+  --accent-color: #4a9df3;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
+body, html {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   width: 100%;
   height: 100%;
+  background-color: var(--background-color);
+  color: var(--text-color);
   overflow: hidden;
-}
-
-body {
-  background-color: #000000;
-  color: white;
 }
 
 // Loading screen
@@ -29,31 +31,27 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: #000;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  background-color: var(--background-color);
   z-index: 1000;
-  transition: opacity 0.5s ease;
-
-  &.fade-out {
-    opacity: 0;
-    pointer-events: none;
-  }
-
+  
   h1 {
-    font-size: 24px;
-    margin-bottom: 20px;
-    color: white;
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+    color: var(--accent-color);
+    font-weight: 800;
+    letter-spacing: 0.05em;
   }
-
+  
   .loader {
-    width: 60px;
-    height: 60px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
+    width: 80px;
+    height: 80px;
+    border: 8px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
-    border-top-color: #4a9df3;
+    border-top-color: var(--accent-color);
     animation: spin 1s ease-in-out infinite;
   }
 }
