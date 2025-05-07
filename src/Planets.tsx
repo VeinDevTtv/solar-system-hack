@@ -7,7 +7,7 @@ import React, { useRef } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { TextureLoader, Mesh, DoubleSide, Color, MeshPhysicalMaterial, MeshStandardMaterial } from 'three';
 import * as Astronomy from 'astronomy-engine'; // Import the library
-import { usePlanetStore } from './store';
+import { usePlanetStore, PlanetPosition } from './store';
 import Orbit from './Orbit';
 
 // Import environment textures
@@ -197,7 +197,7 @@ interface PlanetsProps {
 }
 
 const Planets: React.FC<PlanetsProps> = ({ currentDate, sunEmissiveIntensity = 1.5 }) => {
-  const { setSelectedPlanet, setPlanetPosition, selectedPlanet } = usePlanetStore();
+  const { setSelectedPlanet, selectedPlanet, setAllPlanetPositions } = usePlanetStore();
 
   // Refs for planets and clouds
   const planetMeshRefs = useRef<(Mesh | null)[]>([]); 
@@ -253,121 +253,103 @@ const Planets: React.FC<PlanetsProps> = ({ currentDate, sunEmissiveIntensity = 1
     moonsData.filter(moon => moon.normalMap).map(moon => moon.normalMap!) || []
   );
 
+  const moonRoughnessMaps = useLoader(
+    TextureLoader,
+    moonsData.filter(moon => moon.roughnessMap).map(moon => moon.roughnessMap!) || []
+  );
+
   // Ring ref for Saturn
   const ringRef = useRef<Mesh>(null);
 
-  // Simplified calculateOrbitalPosition for moons (relative to parent) - KEEP for moons for now
-  const calculateMoonPosition = (
-    orbitRadius: number,
-    orbitSpeed: number,
-    elapsedTime: number
-  ): [number, number, number] => {
-    const angle = elapsedTime * orbitSpeed * 0.1; // Apply a factor if needed
-    const x = Math.cos(angle) * orbitRadius;
-    const z = Math.sin(angle) * orbitRadius;
-    return [x, 0, z]; // Assume moons orbit in the same plane as planets for now
-  };
-
   useFrame((state, delta) => {
     const elapsedTime = state.clock.getElapsedTime();
+    const newPlanetPositions: PlanetPosition = {}; 
 
     planetData.forEach((planet, index) => {
-      const mesh = planetMeshRefs.current[index];
-      if (!mesh) return;
+      const planetMesh = planetMeshRefs.current[index];
+      let positionX = 0, positionY = 0, positionZ = 0;
 
-      if (planet.name !== 'Sun') {
+      if (planet.name === 'Sun') {
+        // Sun is at the origin
+        positionX = 0;
+        positionY = 0;
+        positionZ = 0;
+        if (planetMesh) {
+          planetMesh.rotation.y += planet.rotationSpeed * delta * 5; // Slow rotation for the sun
+        }
+      } else {
         try {
-          // Ensure planet name is a valid Astronomy.Body type
-          const bodyName = planet.name as keyof typeof Astronomy.Body;
-          if (!(bodyName in Astronomy.Body)) {
-            console.warn(`Invalid body name for Astronomy Engine: ${planet.name}`);
-            return; // Skip this planet if name is invalid
-          }
-
-          const helioVector = Astronomy.HelioVector(Astronomy.Body[bodyName], currentDate);
-
-          const positionX = helioVector.x * AU_TO_SCENE_SCALE;
-          const positionY = helioVector.z * AU_TO_SCENE_SCALE;
-          const positionZ = helioVector.y * AU_TO_SCENE_SCALE;
-
-          mesh.position.set(positionX, positionY, positionZ);
-
-          // Update atmosphere position if it exists
-          const atmosphereMesh = atmosphereMeshRefs.current[index];
-          if (atmosphereMesh) {
-            atmosphereMesh.position.copy(mesh.position);
-          }
+          const body = planet.name as Astronomy.BodyName; // Type assertion
+          const vector = Astronomy.BodyVector(body, currentDate);
+          const { x, y, z } = Astronomy.Equator(body, currentDate, vector, false);
           
-          // Update clouds position if it exists
-          const cloudsMesh = cloudsMeshRefs.current[index];
-          if (cloudsMesh) {
-            cloudsMesh.position.copy(mesh.position);
-            // Rotate clouds slightly faster than the planet for realism
-            if (planet.cloudSpeed) {
-              cloudsMesh.rotation.y += planet.cloudSpeed * delta * 50;
+          positionX = x * AU_TO_SCENE_SCALE;
+          positionY = z * AU_TO_SCENE_SCALE; // Use z for y to align with orbital plane
+          positionZ = -y * AU_TO_SCENE_SCALE; // Use -y for z for correct orientation
+
+          if (planetMesh) {
+            planetMesh.position.set(positionX, positionY, positionZ);
+            planetMesh.rotation.y += planet.rotationSpeed * delta * 50; // Rotation speed scaled by delta
+            if (planet.axialTilt) {
+              planetMesh.rotation.x = (planet.axialTilt * Math.PI) / 180;
             }
           }
-
-          // Update store with position as an array [x, y, z]
-          setPlanetPosition(planet.name, [positionX, positionY, positionZ]);
-
         } catch (error) {
           console.error(`Error calculating position for ${planet.name}:`, error);
+          // Default to circular orbit if astronomy-engine fails or for planets without precise data
+          const scaledOrbitRadius = (planet.realOrbitRadius / 149.6) * AU_TO_SCENE_SCALE; // Convert real orbit radius to AU then to scene scale
+          const orbitalAngle = elapsedTime * (planet.orbitSpeed ?? 0.1); // Use a default if orbitSpeed is undefined
+          positionX = scaledOrbitRadius * Math.sin(orbitalAngle);
+          positionY = 0; // Planets orbit on the XZ plane
+          positionZ = -scaledOrbitRadius * Math.cos(orbitalAngle);
+
+          if (planetMesh) {
+            planetMesh.position.set(positionX, positionY, positionZ);
+            planetMesh.rotation.y += planet.rotationSpeed * delta * 50; // Apply axial rotation
+            if (planet.axialTilt) {
+              planetMesh.rotation.x = (planet.axialTilt * Math.PI) / 180;
+            }
+          }
         }
       }
+      newPlanetPositions[planet.name] = [positionX, positionY, positionZ];
 
-      // --- Rotation ---
-      mesh.rotation.y += (planet.rotationSpeed || 0) * delta * 50;
-
-      // Apply axial tilt if defined
-      if (planet.axialTilt !== undefined && mesh.rotation.x === 0) {
-        mesh.rotation.x = (planet.axialTilt * Math.PI) / 180;
-        
-        // Also apply tilt to clouds if they exist
-        const cloudsMesh = cloudsMeshRefs.current[index];
-        if (cloudsMesh) {
-          cloudsMesh.rotation.x = (planet.axialTilt * Math.PI) / 180;
-        }
-        
-        // Also apply tilt to atmosphere if it exists
-        const atmosphereMesh = atmosphereMeshRefs.current[index];
-        if (atmosphereMesh) {
-          atmosphereMesh.rotation.x = (planet.axialTilt * Math.PI) / 180;
-        }
+      // Clouds rotation (if applicable)
+      const cloudsMesh = cloudsMeshRefs.current[index];
+      if (cloudsMesh && planet.cloudSpeed) {
+        cloudsMesh.rotation.y += planet.cloudSpeed * delta;
       }
 
-      // --- Handle Saturn's Rings ---
-      if (planet.name === 'Saturn' && ringRef.current) {
-        ringRef.current.position.copy(mesh.position);
-        // Apply proper tilt for Saturn's rings
-        ringRef.current.rotation.x = Math.PI / 2 + (planet.axialTilt || 0) * (Math.PI / 180);
-        // Let rings spin with planet for now
-        ringRef.current.rotation.y = mesh.rotation.y * 0.4; // Slower rotation
+      // Atmosphere pulse (if applicable)
+      const atmosphereMesh = atmosphereMeshRefs.current[index];
+      if (atmosphereMesh && planet.atmosphereColor) {
+        const pulseFactor = 0.015 * Math.sin(elapsedTime * 0.5) + 1;
+        atmosphereMesh.scale.set(pulseFactor, pulseFactor, pulseFactor);
       }
 
-      // --- Handle Moons (using old simplified logic) ---
+      // Handle moons for the current planet
       if (planet.moons) {
-        planet.moons.forEach((moon) => {
-          const moonIndex = moonsData.findIndex(m => m.name === moon.name && m.parentIndex === index);
-          const moonMesh = moonMeshRefs.current[moonIndex];
-          if (!moonMesh || !moon.orbitRadius || !moon.orbitSpeed || !moon.rotationSpeed) return; // Check moon data
+        planet.moons.forEach((moonData) => {
+          const moonGlobalIndex = moonsData.findIndex(m => m.name === moonData.name && m.parentIndex === index);
+          const moonMesh = moonMeshRefs.current[moonGlobalIndex];
+          const parentCurrentPosition = newPlanetPositions[planet.name]; // Get current frame's parent position
 
-          const [moonX, moonY, moonZ] = calculateMoonPosition(
-            moon.orbitRadius,
-            moon.orbitSpeed,
-            elapsedTime
-          );
+          if (moonMesh && parentCurrentPosition) {
+            const moonOrbitalAngle = elapsedTime * moonData.orbitSpeed; 
+            const moonX = parentCurrentPosition[0] + moonData.orbitRadius * Math.cos(moonOrbitalAngle);
+            const moonY = parentCurrentPosition[1]; // Keep moons on the same Y-plane as their planet for simplicity
+            const moonZ = parentCurrentPosition[2] - moonData.orbitRadius * Math.sin(moonOrbitalAngle);
+            
+            moonMesh.position.set(moonX, moonY, moonZ);
+            moonMesh.rotation.y += moonData.rotationSpeed * delta * 50;
 
-          moonMesh.position.set(
-            mesh.position.x + moonX,
-            mesh.position.y + moonY,
-            mesh.position.z + moonZ
-          );
-
-          moonMesh.rotation.y += moon.rotationSpeed * delta * 50;
+            newPlanetPositions[moonData.name] = [moonX, moonY, moonZ];
+          }
         });
       }
     });
+
+    setAllPlanetPositions(newPlanetPositions);
   });
 
   // Calculate planet size dynamically
@@ -398,6 +380,9 @@ const Planets: React.FC<PlanetsProps> = ({ currentDate, sunEmissiveIntensity = 1
       cloudsMapIndex[planet.name] = cloudsMapCounter++;
     }
   });
+
+  // Debug log to check if Planets component renders
+  console.log("Planets component rendering, selected:", selectedPlanet);
 
   return (
     <>
@@ -554,6 +539,7 @@ const Planets: React.FC<PlanetsProps> = ({ currentDate, sunEmissiveIntensity = 1
             <meshPhysicalMaterial 
               map={moonTextures[index]}
               normalMap={hasNormalMap ? moonNormalMaps[moonsData.findIndex(m => m.normalMap && m.name === moon.name)] : null}
+              roughnessMap={moonRoughnessMaps[moonsData.findIndex(m => m.roughnessMap && m.name === moon.name)]}
               metalness={0.1}
               roughness={0.9}
             />

@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 
-interface PlanetPosition {
+export interface PlanetPosition {
   [planetName: string]: [number, number, number];
 }
 
@@ -48,6 +48,7 @@ interface PlanetStore {
   setTargetPlanet: (planet: string | null) => void;
   planetPositions: PlanetPosition;
   setPlanetPosition: (planet: string, position: [number, number, number]) => void;
+  setAllPlanetPositions: (positions: PlanetPosition) => void;
   
   // Settings and controls
   settings: Settings;
@@ -71,6 +72,7 @@ export const usePlanetStore = create<PlanetStore>((set) => ({
     set((state) => ({
       planetPositions: { ...state.planetPositions, [planet]: position },
     })),
+  setAllPlanetPositions: (positions) => set({ planetPositions: positions }),
   
   // Settings with defaults
   settings: {
